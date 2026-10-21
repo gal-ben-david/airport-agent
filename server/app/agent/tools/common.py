@@ -6,8 +6,10 @@ Every tool returns a JSON-serializable dict:
   - success: {"ok": True, "data_year": 2025, "data_status": ..., "units": ..., "flags": [...], ...}
   - failure: {"ok": False, "error": "..."}  (tools never raise on bad input)
 
-Fractions are returned as 0-1 decimals (0.817 = 81.7%); formatting is left to
-the agent. Missing values are None, with a flag explaining why (D12, D18).
+Fractions are returned as 0-1 decimals (0.817 = 81.7%). Each number also has a
+pre-formatted `<field>_display` string, computed from the unrounded value, which
+the agent quotes as given so it never rounds or computes numbers itself.
+Missing values are None, with a flag explaining why (D12, D18).
 """
 
 import math
@@ -46,6 +48,7 @@ COMPONENT_SOURCES = {
 }
 
 UNITS = {
+    "display": "*_display fields are pre-formatted from the unrounded values; quote them exactly",
     "enplanements": "passengers boarding (count, calendar year)",
     "cagr_19_25": "compound annual growth rate, fraction per year (0.03 = 3%/yr)",
     "pct_change_24_25": "fraction (0.05 = +5%)",
@@ -54,7 +57,10 @@ UNITS = {
     "delay_rate": "fraction of arrivals delayed 15+ min, any cause",
     "cancel_rate": "fraction of arrivals cancelled",
     "shares": "fraction 0-1",
-    "percentiles": "0-1 within FAA hub group (0.85 = better than 85% of peers)",
+    "percentiles": (
+        "0-1 within FAA hub group; higher = stronger investment signal on that component "
+        "(faster growth, fuller flights, MORE congestion, larger). 0.85 = higher than 85% of peers"
+    ),
     "investment_score": "0-1, weighted sum of the 4 percentiles",
 }
 
@@ -79,6 +85,53 @@ def _clean(v):
                 return None
             return int(v) if v.is_integer() else round(v, 4)
     return v
+
+
+def _fmt(v, kind: str) -> str | None:
+    """Display string from the unrounded value; None if missing.
+
+    kind: "count" (26,251,850), "pct" (82.3%), "pct_signed" (+4.7%), "decimal" (0.687).
+    """
+    if v is None or pd.isna(v):
+        return None
+    v = float(v)
+    if kind == "count":
+        return f"{round(v):,}"
+    if kind == "decimal":
+        return f"{v:.3f}"
+    s = f"{v:+.1%}" if kind == "pct_signed" else f"{v:.1%}"
+    return "0.0%" if s in ("-0.0%", "+0.0%") else s
+
+
+def _values(row: pd.Series, spec: dict[str, tuple[str, str]]) -> dict:
+    """{out_key: (column, kind)} -> {out_key: value, out_key_display: string}."""
+    out = {}
+    for key, (col, kind) in spec.items():
+        out[key] = _clean(row[col])
+        out[f"{key}_display"] = _fmt(row[col], kind)
+    return out
+
+
+METRIC_SPEC = {
+    "enpl_2025": ("enpl_2025", "count"),
+    "enpl_2024": ("enpl_2024", "count"),
+    "enpl_2019": ("enpl_2019", "count"),
+    "cagr_19_25": ("cagr_19_25", "pct_signed"),
+    "pct_change_24_25": ("pct_change_24_25", "pct_signed"),
+    "load_factor": ("load_factor", "pct"),
+    "nas_delay_rate": ("nas_delay_rate", "pct"),
+    "passengers_FL": ("passengers_FL", "count"),
+    "departures_FL": ("departures_FL", "count"),
+    "tot_departures_all": ("tot_departures_all", "count"),
+}
+CONTEXT_SPEC = {
+    "delay_rate": ("delay_rate", "pct"),
+    "cancel_rate": ("cancel_rate", "pct"),
+    "arr_flights_reported": ("arr_flights", "count"),
+    "long_haul_share_flights": ("long_haul_share_flights", "pct"),
+    "long_haul_share_pax": ("long_haul_share_pax", "pct"),
+    "cargo_departure_share": ("cargo_departure_share", "pct"),
+}
 
 
 def _is_true(v) -> bool:
@@ -176,34 +229,21 @@ def _profile(row: pd.Series) -> dict:
     missing = _missing_components(row)
     return {
         **_identity(row),
-        "metrics": {
-            "enpl_2025": _clean(row["enpl_2025"]),
-            "enpl_2024": _clean(row["enpl_2024"]),
-            "enpl_2019": _clean(row["enpl_2019"]),
-            "cagr_19_25": _clean(row["cagr_19_25"]),
-            "pct_change_24_25": _clean(row["pct_change_24_25"]),
-            "load_factor": _clean(row["load_factor"]),
-            "nas_delay_rate": _clean(row["nas_delay_rate"]),
-            "passengers_FL": _clean(row["passengers_FL"]),
-            "departures_FL": _clean(row["departures_FL"]),
-            "tot_departures_all": _clean(row["tot_departures_all"]),
-        },
+        "metrics": _values(row, METRIC_SPEC),
         "context_metrics": {  # reported, not scored (D16)
-            "delay_rate": _clean(row["delay_rate"]),
-            "cancel_rate": _clean(row["cancel_rate"]),
-            "arr_flights_reported": _clean(row["arr_flights"]),
-            "long_haul_share_flights": _clean(row["long_haul_share_flights"]),
-            "long_haul_share_pax": _clean(row["long_haul_share_pax"]),
-            "cargo_departure_share": _clean(row["cargo_departure_share"]),
+            **_values(row, CONTEXT_SPEC),
             "long_haul_threshold_miles": LONG_HAUL_MILES,
         },
         "score": {
             # Unranked airports get no score: it rests on too much imputed data (D18).
             "investment_score": _clean(row["investment_score"]) if ranked else None,
+            "investment_score_display": _fmt(row["investment_score"], "decimal") if ranked else None,
             "components": {
                 c: {
                     "percentile": _clean(row[f"{c}_pct"]),
+                    "percentile_display": _fmt(row[f"{c}_pct"], "decimal"),
                     "weight": WEIGHTS[c],
+                    "weight_display": f"{WEIGHTS[c]:.0%}",
                     "imputed_neutral": c in missing,
                 }
                 for c in WEIGHTS

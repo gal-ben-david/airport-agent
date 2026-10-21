@@ -1,5 +1,7 @@
 """Single-airport tools: find_airport, get_airport_profile."""
 
+import re
+
 from .common import (
     REGIONS,
     UNITS,
@@ -12,6 +14,10 @@ from .common import (
 )
 
 MAX_CANDIDATES = 10
+
+# Generic words removed before matching names and cities, so that
+# "Anchorage airport" matches like "Anchorage".
+FILLER_WORDS = re.compile(r"\b(the|airport|airports|international|intl)\b", re.IGNORECASE)
 
 # Informal names that don't match a single city or code. Each carries the
 # assumption the agent must state when it uses the match.
@@ -29,33 +35,37 @@ ALIASES = {
 def find_airport(query: str) -> dict:
     """Resolve a code, city or name to a Primary airport.
 
-    Order: FAA code -> IATA code -> known alias -> exact city -> partial
-    name/city match. Several hits return `candidates` instead of a guess.
+    Generic words ("airport", "international", ...) are ignored. Order: FAA code
+    -> IATA code -> known alias -> exact city -> partial name/city match.
+    Several hits return `candidates` instead of a guess.
     """
     if not isinstance(query, str) or not query.strip():
         return _error("query must be a non-empty string (airport code, city or name).")
     q = query.strip()
+    # Fall back to the full query if it was only filler words.
+    name_q = " ".join(FILLER_WORDS.sub(" ", q).split()) or q
     df = _scores()
 
-    if q.lower() in REGIONS:
+    if name_q.lower() in REGIONS:
         return _error(
-            f"'{q}' is a region, not an airport. Use rank_airports(states='{q}') "
-            f"(states: {', '.join(REGIONS[q.lower()])})."
+            f"'{name_q}' is a region, not an airport. Use rank_airports(states='{name_q}') "
+            f"(states: {', '.join(REGIONS[name_q.lower()])})."
         )
 
-    row = _lookup_code(q)
-    if row is not None:
-        match_type = "faa_code" if row["code"].upper() == q.upper() else "iata_code"
-        return _ok(query=q, match=_identity(row), match_type=match_type, note=None, candidates=[])
+    for candidate in dict.fromkeys([q, name_q]):  # e.g. "SFO airport" -> "SFO"
+        row = _lookup_code(candidate)
+        if row is not None:
+            match_type = "faa_code" if row["code"].upper() == candidate.upper() else "iata_code"
+            return _ok(query=q, match=_identity(row), match_type=match_type, note=None, candidates=[])
 
-    if q.lower() in ALIASES:
-        code, note = ALIASES[q.lower()]
+    if name_q.lower() in ALIASES:
+        code, note = ALIASES[name_q.lower()]
         return _ok(query=q, match=_identity(_lookup_code(code)), match_type="alias", note=note, candidates=[])
 
-    hits = df[df["city"].str.lower() == q.lower()]
+    hits = df[df["city"].str.lower() == name_q.lower()]
     match_type = "city"
-    if hits.empty and len(q) >= 3:
-        pattern = q.lower()
+    if hits.empty and len(name_q) >= 3:
+        pattern = name_q.lower()
         hits = df[
             df["city"].str.lower().str.contains(pattern, regex=False)
             | df["name"].str.lower().str.contains(pattern, regex=False)
@@ -70,11 +80,11 @@ def find_airport(query: str) -> dict:
             query=q,
             match=None,
             match_type="ambiguous",
-            note=f"{len(hits)} airports match '{q}'. Ask the user which one they mean.",
+            note=f"{len(hits)} airports match '{name_q}'. Ask the user which one they mean.",
             candidates=[_identity(r) for _, r in hits.head(MAX_CANDIDATES).iterrows()],
         )
     return _error(
-        f"No FAA Primary airport matches '{q}'. Only airports with more than "
+        f"No FAA Primary airport matches '{name_q}'. Only airports with more than "
         "10,000 annual enplanements are covered (D2)."
     )
 

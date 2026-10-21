@@ -299,6 +299,23 @@ A flag does not always indicate an extreme profile: an airport in a crowded midd
 
 **Known limitation:** A delay rate based on very few reported arrivals is unreliable. Vero Beach's 25.5% NAS delay rate rests on 42 reported arrivals (vs. 1,372 departures in T-100), which gives it the top congestion score among Nonhubs. With more time: treat the delay rate as missing (neutral, D18) below a minimum number of reported arrivals.
 
+## Agent behavior
+
+### D24. Agent loop: stateless, tool-grounded, with a tool budget
+**Decision:**
+- `run_agent(messages)` is stateless: each request carries the plain chat history. Earlier tool results are not carried forward, so follow-up questions fetch numbers again through tools.
+- Each user turn is limited to 6 tool calls. After the limit, the model must answer with the information it already has.
+- Tool errors (unknown airport, invalid input) are returned to the model as error results, so it can explain them to the user instead of failing.
+- Every tool call, with its inputs and results, is returned alongside the answer, for evaluation and auditing.
+
+**Why:**
+- Statelessness lets any server instance handle any request, which is what allows horizontal scaling, and fits a web front end (Streamlit now, React or other clients later).
+- Re-fetching is cheap: tools read a small precomputed table (D7). The main cost is LLM tokens, not tool computation.
+- Re-fetching keeps every number in every answer traceable to a tool result.
+- The tool budget prevents runaway loops and bounds cost and latency per question.
+
+**Production options:** cache tool results by input (the data changes rarely), use prompt caching for the fixed system prompt and tool definitions, store conversations server-side (e.g., Redis) and trim or summarize long histories.
+
 
 ## References
 - [FAA – Airport Categories](https://www.faa.gov/airports/planning_capacity/categories)
