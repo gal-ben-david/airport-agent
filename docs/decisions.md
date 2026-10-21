@@ -128,6 +128,7 @@ CAGR = (enplanements_2025 / enplanements_2019)^(1/6) − 1: the equivalent stead
 - FAA codes are mapped to IATA codes using OurAirports [6][7], which lists both identifiers (`local_code`, `iata_code`) for each airport.
 - A manual override handles codes that changed after the data period: DJT → PBI (OurAirports already shows the new code DJT, while 2025 T-100 still uses PBI).
 - Fallback rule: the mapped code is used only if it exists in T-100; otherwise the FAA code is kept. This prevents the mapping from breaking airports that already matched (e.g., Grand Canyon West, 1G4).
+- The same code change affects ICAO codes: OurAirports lists KDJT, but OpenSky reports West Palm Beach flights under KPBI (KDJT returned no flights; KPBI returned 160 departures for one day). Handled by a DJT → KPBI override in the ICAO mapping, verified with a live API call.
 
 **Validation:**
 - The mapping reproduced 13 of 14 independently verified airports; the exception is the DJT/PBI code change, covered by the override.
@@ -317,6 +318,23 @@ A flag does not always indicate an extreme profile: an airport in a crowded midd
 - The tool budget prevents runaway loops and bounds cost and latency per question.
 
 **Production options:** cache tool results by input (the data changes rarely), use prompt caching for the fixed system prompt and tool definitions, store conversations server-side (e.g., Redis) and trim or summarize long histories.
+
+## D22. Live public API: OpenSky Network for recent activity
+**Decision:** The agent has one live tool, `get_recent_traffic`, which calls the OpenSky Network REST API for an airport's arrivals and departures over the last N full days (default 7). It compares recent airline departures per day with the 2025 baseline from T-100 (all departures / 365).
+
+**Why:** Historical sources (FAA, BTS) describe 2025. OpenSky shows current activity, so the agent can say whether the 2025 picture still holds, and answer "recent activity" questions.
+
+**Verified API behavior (not assumed):** OAuth2 client credentials only (anonymous calls return 403); a maximum of 2 days per request, so 7 days are fetched in 4 chunks; data appears overnight, so only full past days are used; no flights returns 404, treated as zero; each call costs credits from a daily allowance.
+
+**Airline filter:** departures are counted as airline flights when the callsign matches an airline pattern (3 letters, digits, optional letter suffix). At SFO, 503 of 514 departures on one day matched. Some non-airline operators also match (e.g., military, fractional jets).
+
+**Not used in scoring:** OpenSky counts tracked flights (ADS-B, coverage may be incomplete), has no passenger data, and a recent week is not directly comparable to a full-year average (seasonality). The recent vs 2025 comparison also mixes two sources that count flights differently (ADS-B tracking vs airline reports), so differences of ±15% should be read as rough signals, not measured growth. It is context only, consistent with D7.
+
+**First results (7 days to 21 Oct 2026):** airline departures per day vs the 2025 average: SFO +13.8%, BOS +14.8%, LAX +3.0%. The difference between airports (LAX, which declined in 2025, shows almost no increase) suggests the comparison captures real variation rather than a uniform offset between the two sources, within the limits above.
+
+**Reliability:** 10-second timeout, one retry; a 24-hour cache per airport and window; if the API fails, the last cached result is returned marked as stale with its date, otherwise a clear "live data unavailable" message. Any failed chunk fails the whole fetch, so partial counts are never shown. Credits are protected by limiting requests to 1–7 days and by the cache.
+
+**Licensing note:** OpenSky's free access is intended for research and non-commercial use; a commercial deployment would require a license.
 
 ### D25. Out-of-scope requests: short decline, no tools
 **Decision:** For requests unrelated to airport investment analysis (e.g., "write me a poem"), the agent declines in one or two sentences, says what it can help with, and stops. It calls no tools and does not revisit earlier answers.

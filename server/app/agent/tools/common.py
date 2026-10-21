@@ -92,7 +92,8 @@ def _clean(v):
 def _fmt(v, kind: str) -> str | None:
     """Display string from the unrounded value; None if missing.
 
-    kind: "count" (26,251,850), "pct" (82.3%), "pct_signed" (+4.7%), "decimal" (0.687).
+    kind: "count" (26,251,850), "pct" (82.3%), "pct_signed" (+4.7%), "decimal" (0.687),
+    "decimal_1" (1,234.5, e.g. flights per day).
     """
     if v is None or pd.isna(v):
         return None
@@ -101,6 +102,8 @@ def _fmt(v, kind: str) -> str | None:
         return f"{round(v):,}"
     if kind == "decimal":
         return f"{v:.3f}"
+    if kind == "decimal_1":
+        return f"{v:,.1f}"
     s = f"{v:+.1%}" if kind == "pct_signed" else f"{v:.1%}"
     return "0.0%" if s in ("-0.0%", "+0.0%") else s
 

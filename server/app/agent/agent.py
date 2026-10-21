@@ -170,6 +170,30 @@ TOOL_SCHEMAS = [
         },
         "strict": True,
     },
+    {
+        "name": "get_recent_traffic",
+        "description": (
+            "Live recent activity from the OpenSky Network API (ADS-B tracking): arrivals, "
+            "departures and airline departures over the last N full UTC days, with daily "
+            "averages, compared with the 2025 T-100 average departures per day. Returns the "
+            "exact time window, cache status (live, cached or stale) and caveats. Context "
+            "only, not part of the investment score. Use for questions about recent or "
+            "current activity."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "code": {"type": "string", "description": "FAA or IATA code."},
+                "days": {
+                    "type": "integer",
+                    "description": "Number of full past days, 1-7 (default 7).",
+                },
+            },
+            "required": ["code"],
+            "additionalProperties": False,
+        },
+        "strict": True,
+    },
 ]
 
 
