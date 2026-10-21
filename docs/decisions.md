@@ -274,6 +274,19 @@ A flag does not always indicate an extreme profile: an airport in a crowded midd
 
 **How found:** Reviewing the first New England results.
 
+## D21. Validation against simple rankings
+**Question:** Does the four-component score add anything over simply ranking by size or by growth?
+
+**Method:** Within each hub group, our ranking was compared with two simple rankings: by 2025 enplanements (size only) and by 2019→2025 CAGR (growth only).
+
+**Results:**
+- Correlation with size-only is low in Medium and Small hubs (Spearman −0.07, 0.08) and moderate in Large and Nonhub (0.57, 0.66). Correlation with growth-only is 0.49–0.78: growth matters most, as intended, but it is not the whole score.
+- Size alone would favor large airports that are shrinking: LAX is 5th of 30 by size but 21st by our score (passengers −2.7%/yr since 2019).
+- Growth alone would favor tiny airports with large percentage jumps: four of the growth-only top 5 Nonhubs have 10,000–25,000 passengers and 54–69% load factors; our score ranks them 85th–109th.
+- Our score finds balanced airports that neither rule finds: Knoxville (TYS) is 15th of 79 Small hubs by both size and growth, but 1st by our score, being strong on all four components.
+
+**Known limitation:** A delay rate based on very few reported arrivals is unreliable. Vero Beach's 25.5% NAS delay rate rests on 42 reported arrivals (vs. 1,372 departures in T-100), which gives it the top congestion score among Nonhubs. With more time: treat the delay rate as missing (neutral, D18) below a minimum number of reported arrivals.
+
 
 ## References
 - [FAA – Airport Categories](https://www.faa.gov/airports/planning_capacity/categories)
