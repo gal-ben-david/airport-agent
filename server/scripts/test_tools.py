@@ -13,6 +13,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.agent import tools  # noqa: E402
+from app.agent.tools.common import _lookup_code  # noqa: E402
+from app.agent.tools.long_haul import _compute_long_haul  # noqa: E402
 
 QUERIES = ["LAX", "SNA", "SFO", "BOS", "ANC", "HVN", "Los Angeles", "New England", "XXX"]
 CODES = ["LAX", "SNA", "SFO", "BOS", "ANC", "HVN"]
@@ -70,8 +72,8 @@ results = []
 
 print("Recomputing 3,000 mi from raw T-100 matches the stored values:")
 for c in CODES:
-    row = tools._lookup_code(c)
-    computed = tools._compute_long_haul(row["iata"], 3000)
+    row = _lookup_code(c)
+    computed = _compute_long_haul(row["iata"], 3000)
     stored = tools.long_haul_share(c)
     same = all(
         abs((computed[k] or 0) - (stored[k] or 0)) < 1e-4
