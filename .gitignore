@@ -1,0 +1,17 @@
+# Environment
+.venv/
+.env
+
+# Python / Jupyter
+__pycache__/
+.ipynb_checkpoints/
+
+# Raw uncompressed data (compressed .csv.gz versions are committed)
+data/raw/*.csv
+
+# Doc
+remarks.md
+CLAUDE.md
+
+# OS
+.DS_Store
