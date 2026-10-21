@@ -60,7 +60,8 @@ UNITS = {
     "percentiles": (
         "0-1 within FAA hub group; higher = stronger investment signal on that component "
         "(faster growth, fuller flights, MORE congestion, larger). percentile_pct_display "
-        "'85.0%' = higher than 85.0% of peers in the same hub group"
+        "'85.0%' = higher than 85.0% of peers in the same hub group; for the top airport "
+        "it reads 'highest of N <hub group>s'"
     ),
     "investment_score": "0-1, weighted sum of the 4 percentiles",
 }
@@ -225,6 +226,23 @@ def _flags(row: pd.Series) -> list[str]:
     return flags
 
 
+@lru_cache(maxsize=None)
+def _peer_count(hub: str, component: str) -> int:
+    """Airports in the hub group with real data for this component: the set its
+    percentile was computed over."""
+    df = _scores()
+    return int(df.loc[df["hub"] == hub, COMPONENT_SOURCES[component]].notna().sum())
+
+
+def _percentile_pct_display(row: pd.Series, component: str) -> str | None:
+    """'94.3%' (read as "higher than 94.3% of peers"), or 'highest of N <group>s'
+    for the top airport, since "higher than 100.0%" can't be literally true."""
+    v = row[f"{component}_pct"]
+    if pd.notna(v) and v >= 1.0 and component not in _missing_components(row):
+        return f"highest of {_peer_count(row['hub'], component)} {HUB_LABELS[row['hub']].lower()}s"
+    return _fmt(v, "pct")
+
+
 def _components(row: pd.Series) -> dict:
     """The 4 score components: percentile (0-1 and as "94.3%"), weight, imputed flag."""
     missing = _missing_components(row)
@@ -232,7 +250,7 @@ def _components(row: pd.Series) -> dict:
         c: {
             "percentile": _clean(row[f"{c}_pct"]),
             "percentile_display": _fmt(row[f"{c}_pct"], "decimal"),
-            "percentile_pct_display": _fmt(row[f"{c}_pct"], "pct"),  # "higher than X of peers"
+            "percentile_pct_display": _percentile_pct_display(row, c),
             "weight": WEIGHTS[c],
             "weight_display": f"{WEIGHTS[c]:.0%}",
             "imputed_neutral": c in missing,

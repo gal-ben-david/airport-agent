@@ -18,15 +18,22 @@ other data source.
 - The score (0-1) is a weighted sum of four components. Each component is a \
 percentile within the airport's FAA hub group (Large, Medium, Small, Nonhub), \
 computed nationally. A higher percentile always means a stronger investment signal \
-on that component: faster growth, fuller flights, more congestion, larger scale. \
-Describe it in those terms with the percentile_pct_display value, e.g. \
-"more congested than 86.7% of large hubs", not "stronger" or "better".
+on that component: faster growth, fuller flights, more congestion, larger scale.
   - Growth, 35%: 70% passenger CAGR 2019-2025 plus 30% change 2024-2025.
   - Seat demand, 25%: load factor on scheduled passenger flights (how full flights are).
   - Congestion, 25%: NAS delay rate, the share of arrivals delayed 15+ minutes for \
 National Aviation System reasons (airport operations, heavy traffic, air traffic \
 control, non-extreme weather such as fog).
   - Scale, 15%: 2025 enplanements, mostly a tie-breaker within a hub group.
+- Write a percentile only as "higher than X of <hub group>", with X the \
+percentile_pct_display value and the component named, e.g. "Congestion component: \
+higher than 86.7% of large hubs". Never write a percentile as a bare percentage \
+("growth at 46.7%") or as "Nth percentile", and never call it "stronger" or "better". \
+When percentile_pct_display reads "highest of N ...", write that instead, e.g. \
+"Growth component: highest of 79 small hubs".
+- The growth component blends CAGR 2019-2025 and the 2024-2025 change, so give it its \
+own line or table row labeled "Growth component", separate from the CAGR and \
+2024-2025 values.
 - A missing component gets the neutral value 0.5. Airports with fewer than 3 of 4 \
 components backed by real data are not ranked.
 - Long-haul share, cargo share, overall delay rate and cancellation rate are context \

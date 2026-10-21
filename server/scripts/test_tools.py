@@ -96,6 +96,20 @@ print("Display values are computed from unrounded data (SFO load factor 0.82349.
 sfo = tools.get_airport_profile("SFO")["airport"]["metrics"]
 results.append(check(f"SFO load_factor_display = {sfo['load_factor_display']}", sfo["load_factor_display"] == "82.3%"))
 
+print("Top percentile reads 'highest of N', others stay 'X%':")
+hvn = tools.get_airport_profile("HVN")["airport"]["score"]["components"]
+results.append(check(f"HVN growth: {hvn['growth']['percentile_pct_display']}",
+                     hvn["growth"]["percentile_pct_display"] == "highest of 79 small hubs"))
+results.append(check(f"HVN seat_demand: {hvn['seat_demand']['percentile_pct_display']}",
+                     hvn["seat_demand"]["percentile_pct_display"] == "24.1%"))
+# Every percentile of exactly 1.0 in the data, across all hub groups and components.
+from app.agent.tools.common import _components, _scores  # noqa: E402
+tops = [(r["code"], c, d["percentile_pct_display"])
+        for _, r in _scores().iterrows() for c, d in _components(r).items()
+        if d["percentile"] == 1 and not d["imputed_neutral"]]
+for code, comp, disp in tops:
+    results.append(check(f"{code} {comp}: {disp}", disp.startswith("highest of ")))
+
 print("find_airport ignores filler words:")
 for q, code in [("Anchorage airport", None), ("SFO airport", "SFO"), ("Santa Ana airport", "SNA"),
                 ("Los Angeles International", "LAX")]:

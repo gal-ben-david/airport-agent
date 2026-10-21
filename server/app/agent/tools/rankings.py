@@ -102,6 +102,7 @@ def rank_airports(states=None, hub: str | None = None, top_n: int = 5) -> dict:
         ranked = in_group[in_group["ranked"]].sort_values(["rank_in_hub", "code"])
         n_national = int(df.loc[df["hub"] == h, "ranked"].sum())
         shown = min(top_n, len(ranked))
+        top = f"top {region_label} airport" if shown == 1 else f"top {shown} {region_label} airports"
         groups.append({
             "hub": h,
             "hub_label": HUB_LABELS[h],
@@ -109,8 +110,8 @@ def rank_airports(states=None, hub: str | None = None, top_n: int = 5) -> dict:
             "ranked_in_region": len(ranked),
             # Ready-made heading so "top 5 of 79" is not misread as 79 airports in the region.
             "heading_display": (
-                f"{HUB_LABELS[h]}s (top {shown} {region_label} airports; "
-                f"ranks are among {n_national} {HUB_LABELS[h].lower()}s nationally)"
+                f"{HUB_LABELS[h]}s ({top}; ranks are among {n_national} "
+                f"{HUB_LABELS[h].lower()}s nationally)"
             ),
             "airports": [
                 {
