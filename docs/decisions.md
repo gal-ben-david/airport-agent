@@ -40,17 +40,17 @@ The client invests in terminal expansion driven by passenger and flight growth. 
 
 **Tradeoff:** A small airport with real growth potential could be missed. Acceptable for this scope, and the agent states the threshold when answering.
 
-### D7. Historical data is preloaded into a local SQLite database; live APIs only for real-time data
-**Decision:** Historical sources (FAA enplanements, BTS T-100, OurAirports) are ingested ahead of time into a SQLite database file (`data/airports.db`) with precomputed metrics. Live public APIs (e.g., OpenSky) are called only for recent activity, with caching and fallback to the last stored result.
+### D7. Historical data is preprocessed offline; live APIs only for real-time data
+**Decision:** Historical sources (FAA enplanements, BTS T-100, BTS delay causes, OurAirports) are processed offline into small tables in data/processed/ (airport_metrics.csv, airport_scores.csv). The agent's tools load them into memory once and answer from there. The live OpenSky API is called only for recent activity, with caching and fallback.
 
 **Why:**
 - These sources update annually or monthly, so querying them live on every question adds latency and failure points without adding freshness.
-- Preloading makes the scoring fast, reproducible and deterministic.
-- SQLite is a single file with no server to install, so the project runs anywhere with Python.
+- Precomputed metrics make the scoring fast, reproducible and deterministic.
+- At this size (402 airports), in-memory tables are faster and simpler than a database server.
 
-**Delivery:** The repository includes the raw source files (`data/raw/`), the build script (`build_db.py`), and the prebuilt database. Reviewers can run the agent immediately, or rebuild the database from raw data with one command to verify the pipeline.
+**Delivery:** The repository includes the raw source files (compressed), the processed tables, and the notebooks that build them.
 
-**Tradeoff:** Data is only as fresh as the last ingest run. The agent states the data period in its answers. In production, a scheduled ETL job would refresh the data.
+**Path to production:** Move the processed tables to a database (e.g., PostgreSQL) loaded by a scheduled ETL job, which supports more data, concurrent access and versioned refreshes.
 
 ### D10. T-100 source: combined domestic + international segment table
 **Decision:** Use BTS "T-100 Segment (All Carriers)", which combines domestic and international segments reported by both US and foreign carriers.

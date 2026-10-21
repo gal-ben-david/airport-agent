@@ -88,8 +88,9 @@ for c in CODES:
     r = tools.long_haul_share(c)
     by_group = r["long_haul_departures"]["by_class_group"]
     total_ok = sum(g["departures"] for g in by_group.values()) == r["long_haul_departures"]["total"]
-    results.append(check(f"{c}: total {r['long_haul_departures']['total_display']}, "
-                         f"threshold_sensitive={r['threshold_sensitive']}", total_ok))
+    table = ", ".join(f"{t['threshold_miles']:,}: {t['share_flights_display']}"
+                      for t in r["threshold_sensitivity"]["by_threshold"])
+    results.append(check(f"{c}: total {r['long_haul_departures']['total_display']}; {table}", total_ok))
 
 print("Display values are computed from unrounded data (SFO load factor 0.82349... -> 82.3%):")
 sfo = tools.get_airport_profile("SFO")["airport"]["metrics"]

@@ -59,7 +59,8 @@ UNITS = {
     "shares": "fraction 0-1",
     "percentiles": (
         "0-1 within FAA hub group; higher = stronger investment signal on that component "
-        "(faster growth, fuller flights, MORE congestion, larger). 0.85 = higher than 85% of peers"
+        "(faster growth, fuller flights, MORE congestion, larger). percentile_pct_display "
+        "'85.0%' = higher than 85.0% of peers in the same hub group"
     ),
     "investment_score": "0-1, weighted sum of the 4 percentiles",
 }
@@ -224,9 +225,24 @@ def _flags(row: pd.Series) -> list[str]:
     return flags
 
 
+def _components(row: pd.Series) -> dict:
+    """The 4 score components: percentile (0-1 and as "94.3%"), weight, imputed flag."""
+    missing = _missing_components(row)
+    return {
+        c: {
+            "percentile": _clean(row[f"{c}_pct"]),
+            "percentile_display": _fmt(row[f"{c}_pct"], "decimal"),
+            "percentile_pct_display": _fmt(row[f"{c}_pct"], "pct"),  # "higher than X of peers"
+            "weight": WEIGHTS[c],
+            "weight_display": f"{WEIGHTS[c]:.0%}",
+            "imputed_neutral": c in missing,
+        }
+        for c in WEIGHTS
+    }
+
+
 def _profile(row: pd.Series) -> dict:
     ranked = bool(row["ranked"])
-    missing = _missing_components(row)
     return {
         **_identity(row),
         "metrics": _values(row, METRIC_SPEC),
@@ -238,16 +254,7 @@ def _profile(row: pd.Series) -> dict:
             # Unranked airports get no score: it rests on too much imputed data (D18).
             "investment_score": _clean(row["investment_score"]) if ranked else None,
             "investment_score_display": _fmt(row["investment_score"], "decimal") if ranked else None,
-            "components": {
-                c: {
-                    "percentile": _clean(row[f"{c}_pct"]),
-                    "percentile_display": _fmt(row[f"{c}_pct"], "decimal"),
-                    "weight": WEIGHTS[c],
-                    "weight_display": f"{WEIGHTS[c]:.0%}",
-                    "imputed_neutral": c in missing,
-                }
-                for c in WEIGHTS
-            },
+            "components": _components(row),
         },
         "ranked": ranked,
         "rank_in_hub": _rank_text(row),

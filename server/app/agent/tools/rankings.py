@@ -5,7 +5,9 @@ from .common import (
     HUB_ORDER,
     REGIONS,
     UNITS,
+    METRIC_SPEC,
     _clean,
+    _components,
     _error,
     _flags,
     _fmt,
@@ -16,7 +18,14 @@ from .common import (
     _profile,
     _rank_text,
     _scores,
+    _values,
 )
+
+# The metric behind each score component (D16).
+RANK_METRIC_SPEC = {
+    k: METRIC_SPEC[k]
+    for k in ("enpl_2025", "cagr_19_25", "pct_change_24_25", "load_factor", "nas_delay_rate")
+}
 
 MAX_TOP_N = 50
 
@@ -78,6 +87,12 @@ def rank_airports(states=None, hub: str | None = None, top_n: int = 5) -> dict:
         return _error(f"top_n must be an integer between 1 and {MAX_TOP_N}.")
 
     region = df[df["state"].isin(state_list) & df["hub"].isin(hubs)]
+    if states is None:
+        region_label = "US"
+    elif region_name:
+        region_label = region_name
+    else:
+        region_label = "/".join(state_list) if len(state_list) <= 4 else "selected-state"
 
     groups = []
     for h in hubs:
@@ -85,11 +100,18 @@ def rank_airports(states=None, hub: str | None = None, top_n: int = 5) -> dict:
         if in_group.empty:
             continue
         ranked = in_group[in_group["ranked"]].sort_values(["rank_in_hub", "code"])
+        n_national = int(df.loc[df["hub"] == h, "ranked"].sum())
+        shown = min(top_n, len(ranked))
         groups.append({
             "hub": h,
             "hub_label": HUB_LABELS[h],
-            "ranked_nationally_in_hub": int(df.loc[df["hub"] == h, "ranked"].sum()),
+            "ranked_nationally_in_hub": n_national,
             "ranked_in_region": len(ranked),
+            # Ready-made heading so "top 5 of 79" is not misread as 79 airports in the region.
+            "heading_display": (
+                f"{HUB_LABELS[h]}s (top {shown} {region_label} airports; "
+                f"ranks are among {n_national} {HUB_LABELS[h].lower()}s nationally)"
+            ),
             "airports": [
                 {
                     "code": r["code"],
@@ -102,6 +124,10 @@ def rank_airports(states=None, hub: str | None = None, top_n: int = 5) -> dict:
                     "rank_in_hub_number": int(r["rank_in_hub"]),
                     "rank_range_sensitivity": r["rank_range_sensitivity"],
                     "weight_sensitive": _is_true(r["weight_sensitive"]),
+                    # Components and their metrics, so the score can be explained
+                    # without a profile call per airport.
+                    "components": _components(r),
+                    "metrics": _values(r, RANK_METRIC_SPEC),
                     "score_completeness": f"{int(r['score_completeness'])} of 4",
                     "data_confidence": r["data_confidence"],
                     "has_delays": bool(r["has_delays"]),

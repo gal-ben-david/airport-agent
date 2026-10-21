@@ -88,7 +88,8 @@ TOOL_SCHEMAS = [
         "name": "rank_airports",
         "description": (
             "Top ranked airports by investment score, grouped by FAA hub size, with each "
-            "airport's national rank within its hub group. Use for 'best candidates' and "
+            "airport's national rank within its hub group, its 4 component percentiles and "
+            "the metrics behind them. Use for 'best candidates' and "
             "regional questions. Pass states as the region name 'New England' (the only "
             "predefined region) or as a list of two-letter state codes for any other "
             "region (e.g. ['CA', 'OR', 'WA']); omit for the whole US. Also lists unranked "
@@ -147,8 +148,8 @@ TOOL_SCHEMAS = [
             ">= threshold miles), by flights and by passengers on scheduled passenger "
             "flights, plus the all-flights share including cargo and the cargo share as "
             "context. Also returns long-haul departure counts by class group (scheduled "
-            "passenger, charter, cargo) and the shares at 2,500 / 3,000 / 4,000 miles with "
-            "a threshold_sensitive flag. Default threshold 3,000 miles; other thresholds "
+            "passenger, charter, cargo) and a table of the shares at 2,500 / 3,000 / 4,000 "
+            "miles. Default threshold 3,000 miles; other thresholds "
             "(100-10,000) are allowed. Use for long-haul or route-mix questions."
         ),
         "input_schema": {

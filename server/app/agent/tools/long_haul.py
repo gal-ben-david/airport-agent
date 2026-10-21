@@ -14,10 +14,8 @@ T100_CSV = REPO_ROOT / "data" / "raw" / "T_T100_SEGMENT_ALL_CARRIER.csv"
 MIN_THRESHOLD_MILES = 100
 MAX_THRESHOLD_MILES = 10_000
 
-# Threshold sensitivity (D15): shares are always reported at these thresholds,
-# and flagged when the 2,500 and 4,000 mile values differ by more than 5 points.
+# Threshold sensitivity (D15): shares are always reported at these thresholds.
 SENSITIVITY_THRESHOLDS = (2500, 3000, 4000)
-SENSITIVE_SPREAD = 0.05
 
 # T-100 service classes grouped for the long-haul breakdown (D14).
 CLASS_GROUPS = {"F": "scheduled_passenger", "L": "charter_passenger", "G": "cargo", "P": "cargo"}
@@ -88,8 +86,8 @@ def long_haul_share(code: str, threshold_miles=LONG_HAUL_MILES, include_cargo: b
 
     Computed from the raw T-100 file with the same filters as the pipeline (at
     3,000 miles this matches the stored airport_metrics values). Also returns
-    long-haul departure counts by class group and shares at 2,500 / 3,000 /
-    4,000 miles with a threshold_sensitive flag.
+    long-haul departure counts by class group and the shares at 2,500 / 3,000 /
+    4,000 miles.
     """
     if isinstance(threshold_miles, bool) or not isinstance(threshold_miles, (int, float)) \
             or not math.isfinite(threshold_miles) \
@@ -134,7 +132,6 @@ def long_haul_share(code: str, threshold_miles=LONG_HAUL_MILES, include_cargo: b
             **_shares_out(empty),
             long_haul_departures=None,
             threshold_sensitivity=None,
-            threshold_sensitive=None,
             cargo_departure_share=None,
             cargo_departure_share_display=None,
             source="none",
@@ -146,17 +143,8 @@ def long_haul_share(code: str, threshold_miles=LONG_HAUL_MILES, include_cargo: b
     if raw["share_flights"] is None:
         flags.append("no scheduled passenger (CLASS F) departures in T-100: passenger shares unavailable.")
 
-    # --- Threshold sensitivity on the headline share (D15)
+    # --- Shares at the standard comparison thresholds (D15)
     by_threshold = {m: _compute_long_haul(row["iata"], m) for m in SENSITIVITY_THRESHOLDS}
-    low, high = by_threshold[SENSITIVITY_THRESHOLDS[0]][headline_key], by_threshold[SENSITIVITY_THRESHOLDS[-1]][headline_key]
-    spread = None if low is None or high is None else low - high
-    sensitive = None if spread is None else bool(spread > SENSITIVE_SPREAD)
-    if sensitive:
-        flags.append(
-            f"threshold-sensitive: the {headline_key} is {_fmt(low, 'pct')} at "
-            f"{SENSITIVITY_THRESHOLDS[0]:,} miles but {_fmt(high, 'pct')} at "
-            f"{SENSITIVITY_THRESHOLDS[-1]:,} miles; the answer depends on the long-haul definition (D15)."
-        )
 
     if cargo >= 0.25:
         flags.append(
@@ -180,14 +168,7 @@ def long_haul_share(code: str, threshold_miles=LONG_HAUL_MILES, include_cargo: b
             "by_threshold": [
                 {"threshold_miles": m, **_shares_out(by_threshold[m])} for m in SENSITIVITY_THRESHOLDS
             ],
-            "spread_display": None if spread is None else f"{spread * 100:.1f} percentage points",
-            "rule": (
-                f"threshold_sensitive when the {SENSITIVITY_THRESHOLDS[0]:,} and "
-                f"{SENSITIVITY_THRESHOLDS[-1]:,} mile values differ by more than "
-                f"{SENSITIVE_SPREAD * 100:.0f} percentage points"
-            ),
         },
-        threshold_sensitive=sensitive,
         cargo_departure_share=_clean(cargo),
         cargo_departure_share_display=_fmt(cargo, "pct"),
         source="computed from T-100 Segment All Carriers, CY2025",
