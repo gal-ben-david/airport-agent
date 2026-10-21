@@ -108,13 +108,23 @@ CAGR = (enplanements_2025 / enplanements_2019)^(1/6) − 1: the equivalent stead
 **Why:** The investor cares about airports as they are today. Filtering by classification in both years would wrongly exclude airports that grew into Primary status, which are exactly the high-growth candidates the client is looking for.
 
 ### D9. Airport identifiers: FAA codes vs. airline (IATA) codes
-**Problem:** The FAA enplanement data uses FAA location identifiers, while T-100 uses airline (IATA) codes. For most airports they are identical, but not always (e.g., Mesa: FAA IWA / IATA AZA; Kalispell: FAA GPI / IATA FCA). Codes can also change over time (West Palm Beach: PBI in 2019 FAA data, DJT in 2025).
+**Problem:** FAA enplanement data uses FAA location identifiers, while T-100 and BTS delay data use airline (IATA) codes. For most airports they are identical, but not always (e.g., Mesa: FAA IWA / IATA AZA; Kalispell: FAA GPI / IATA FCA). Codes can also change over time (West Palm Beach: PBI in 2019 FAA data, DJT in 2025).
 
-**How found:** Cross-validation flagged 14 Primary airports with no T-100 data, including Mesa (1.0M passengers) and Kalispell (0.56M). All were code mismatches, not missing airports.
+**How found:** Cross-validation flagged 14 Primary airports with no T-100 match, including Mesa (1.0M passengers) and Kalispell (0.56M). All but one were code mismatches, not missing airports.
 
-**Decision:** Map FAA codes to IATA codes using the OurAirports dataset, which lists both identifiers per airport. A small manual alias table covers remaining cases such as historical code changes.
+**Decision:**
+- FAA codes are mapped to IATA codes using OurAirports [6][7], which lists both identifiers (`local_code`, `iata_code`) for each airport.
+- A manual override handles codes that changed after the data period: DJT → PBI (OurAirports already shows the new code DJT, while 2025 T-100 still uses PBI).
+- Fallback rule: the mapped code is used only if it exists in T-100; otherwise the FAA code is kept. This prevents the mapping from breaking airports that already matched (e.g., Grand Canyon West, 1G4).
+
+**Validation:**
+- The mapping reproduced 13 of 14 independently verified airports; the exception is the DJT/PBI code change, covered by the override.
+- After mapping, the mapped airports match FAA within 1% on the combined T-100 table (e.g., Mesa 0.3%, Kalispell 0.1%, West Palm Beach 0.3%). Saipan matches within 9%.
+- 401 of 402 Primary airports have T-100 data. Only Ceiba, PR has none.
 
 **Supporting source:** BTS recommends its numeric Airport ID for analysis across years, because airport codes can change and be reused.
+
+**Production note:** OurAirports is community-maintained without accuracy guarantees, which is why the mapping is validated against T-100 passenger totals rather than trusted directly.
 
 ## Metrics 
 ### D12. Congestion is measured by NAS-attributed delays
