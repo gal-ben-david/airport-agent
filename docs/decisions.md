@@ -212,6 +212,68 @@ Hub size thresholds are statutory (49 USC 47102), as published by the FAA. Hub c
 
 **Why:** Regional subsets are too small for fair peer comparison. For example, Boston is the only Large hub in New England. Scoring nationally means each airport is compared to its true national peers, so a "strong candidate" means strong by national standards, not just the best of a small local group.
 
+## D16. Score components: demand growth meets capacity limits
+**Investment thesis:** Terminal renovation is most profitable where passenger demand is growing and the airport is already under pressure.
+
+**Components (all oriented so that higher = stronger investment case):**
+| Component | Metric | Meaning |
+|---|---|---|
+| Growth | 70% CAGR 2019→2025 + 30% change 2024→2025 | Long-term trend plus recent momentum |
+| Seat demand | Load factor (CLASS F) | How full flights are relative to seats offered |
+| System congestion | NAS delay rate | How strained the airport and airspace system is |
+| Scale | Enplanements 2025 | Size of the passenger base; mostly a tie-breaker within a hub group |
+
+**Context only (reported by the agent, not scored):**
+- Long-haul share: describes the network type, not capacity pressure. Including it would systematically favor international gateways. *Possible extension:* long-haul passengers may bring higher revenue per passenger (retail, larger facilities), which could matter for a revenue-focused investor.
+- Cargo share: cargo flights do not use passenger terminals (D14). This is a scope assumption; it would change if the client invested in cargo facilities.
+- Overall delay rate and cancellation rate: mixed causes, often airline-driven (D12).
+
+## D17. Normalization: percentile rank within hub group
+**Decision:** Each component is converted to a percentile rank (0–1) within the airport's FAA hub group (D3), computed nationally (D6).
+
+**Why:**
+- Puts metrics in different units on one scale.
+- Robust to outliers (e.g., Vero Beach's 60% annual growth does not stretch the scale for other airports).
+- Easy to explain: "0.85 on growth = grew faster than 85% of peers."
+
+**Tradeoff:** Percentiles keep the order but lose magnitude: a small lead and a large lead can produce similar percentiles.
+
+## D18. Missing data: neutral value plus completeness flag
+**Decision:** A missing component (e.g., no delay data, no 2019 history) receives the neutral value 0.5, the peer-group median. A column `score_completeness` records how many of the four components used real data.
+
+**Why:**
+- Treating missing data as zero would wrongly reward or penalize an airport.
+- Reweighting the available components would amplify them. For example, New Haven (no delay data, very high growth) would have its growth count more.
+- A neutral value means the airport is neither rewarded nor penalized for missing data.
+
+**Data confidence** (T-100 vs FAA agreement) does not change the score. It is a flag the agent reports.
+
+**Minimum completeness:** An airport is ranked only if at least 3 of its 4 score components use real data (`score_completeness` ≥ 3). The 7 airports with only 1 or 2 real components are not ranked. The agent reports them as "insufficient data to score" and shows the metrics that are available.
+
+## D19. Weights: 35 / 25 / 25 / 15, with sensitivity check
+**Decision:** Growth 35%, seat demand 25%, system congestion 25%, scale 15%. Weights are a configurable parameter.
+
+**Why:**
+- Growth is the core of the investment thesis.
+- Seat demand and congestion are two independent signals of pressure (full flights vs. a strained system), weighted equally.
+- Scale is mostly a tie-breaker, since hub groups already compare airports of similar size.
+
+**Robustness:** Weights are a judgment call. A sensitivity check (each weight ±10 points) tests whether the top-ranked airports change.
+
+**Sensitivity results:** Across 8 scenarios (each weight ±0.10, others rescaled proportionally), the within-hub ranking is highly stable: Spearman ≥ 0.97 for every hub group, and at least 3 of the baseline top 5 remain in the top 5. The top 3 of each hub never change; turnover occurs only at positions 4–5, between airports with near-identical scores (e.g., ORD/EWR). SFO ranks above LAX in every scenario. Airports with one extreme component are the most weight-sensitive: HVN (growth percentile 1.0, weak seat demand and scale) ranges from 23rd to 42nd of 79 Small hubs, so the agent notes this sensitivity when reporting it.
+
+**Limitation:** The test covers moderate changes (±0.10). An investor with a very different view (e.g., growth at 60%) could get a different ranking. Weights are configurable for that reason.
+
+**Weight-sensitivity flag:** Each ranked airport stores its rank range across the 8 scenarios (`rank_range_sensitivity`). An airport is flagged `weight_sensitive` when its range exceeds 20% of its hub group (`SENSITIVE_RANGE_SHARE = 0.20`), i.e., more than one quintile, meaning it could move to a different tier of its peer group. A fixed threshold (e.g., 10 places) was rejected because hub groups differ in size (30 to 251 airports): it flagged 87% of Nonhubs and no Large hubs. With the relative rule, about 11% of airports are flagged, across all hub groups (e.g., HVN: 23rd–42nd of 79). The agent mentions the flag when reporting a flagged airport.
+A flag does not always indicate an extreme profile: an airport in a crowded middle of its group (e.g., Omaha) can also move many places with small score changes.
+
+## D20. Regional answers are grouped by hub size
+**Decision:** When a question covers airports of different sizes (e.g., "New England"), the agent groups results by hub size and reports each airport's national rank within its group (e.g., "Boston: 9th of 30 large hubs").
+
+**Why:** Scores are percentiles within hub groups (D3, D17), so they are not comparable across groups. Sorting a mixed region by score would place a strong small airport above a good large one. For example, Bangor (6th of 258 Nonhubs, score 0.85) would appear ahead of Boston (9th of 30 Large hubs, score 0.66), and Martha's Vineyard (68th of 258 Nonhubs) ahead of Portland, ME (25th of 79 Small hubs). That ordering is meaningless for an investor.
+
+**How found:** Reviewing the first New England results.
+
 
 ## References
 - [FAA – Airport Categories](https://www.faa.gov/airports/planning_capacity/categories)
