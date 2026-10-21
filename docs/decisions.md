@@ -286,6 +286,8 @@ A flag does not always indicate an extreme profile: an airport in a crowded midd
 
 **How found:** Reviewing the first New England results.
 
+**Also applies to summaries:** Takeaways and conclusions describe each airport within its own hub group. The agent never calls one airport the strongest or best "in the region" or "overall" when the region spans several hub groups. Found when an early answer followed D20 in its tables but named a single regional winner in its takeaways.
+
 ## D21. Validation against simple rankings
 **Question:** Does the four-component score add anything over simply ranking by size or by growth?
 
@@ -315,6 +317,23 @@ A flag does not always indicate an extreme profile: an airport in a crowded midd
 - The tool budget prevents runaway loops and bounds cost and latency per question.
 
 **Production options:** cache tool results by input (the data changes rarely), use prompt caching for the fixed system prompt and tool definitions, store conversations server-side (e.g., Redis) and trim or summarize long histories.
+
+### D25. Out-of-scope requests: short decline, no tools
+**Decision:** For requests unrelated to airport investment analysis (e.g., "write me a poem"), the agent declines in one or two sentences, says what it can help with, and stops. It calls no tools and does not revisit earlier answers.
+
+**Why:** An off-topic request should cost almost nothing and should not reopen earlier answers. Tool calls or a recap of the previous analysis add tokens and latency, and can look like the agent is making things up.
+
+## D26. Thin Streamlit UI, independent of the agent
+**Decision:** The chat interface is a thin Streamlit app (ui/streamlit_app.py) that sends the full conversation history to run_agent and displays the answer. It contains no agent logic.
+
+**Features:**
+- The four assignment questions as clickable examples.
+- A "Tools used" panel under each answer, showing every tool call with its inputs and results, so each number in the answer can be traced to its source.
+- Clear error messages instead of crashes (e.g., missing API key). A failed turn is not sent back to the agent as if it were an answer.
+
+**Why:**
+- Streamlit gives a working chat quickly, which kept the focus on data, scoring, evaluation and guardrails.
+- Because the agent is UI-independent (D24), a FastAPI endpoint and a React client could replace Streamlit without changing the agent.
 
 
 ## References
