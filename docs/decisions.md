@@ -66,6 +66,18 @@ The client invests in terminal expansion driven by passenger and flight growth. 
 
 **Possible extension:** 2026 year-to-date data could serve as a "recent trend" signal, compared only against the same months of 2025.
 
+## D23. Primary government data, not published airport rankings
+**Decision:** The analysis uses primary government data (FAA, BTS) rather than published airport rankings (J.D. Power, Wall Street Journal, The Points Guy, Skytrax, ACI).
+
+**Why:**
+- Those rankings measure passenger experience (satisfaction, service, convenience), while the investment question is about demand versus capacity.
+- They typically cover only the largest ~20–30 airports, while this analysis scores 402.
+- They publish final rankings, not raw data, so they cannot support deterministic, explainable scoring or cross-source validation.
+- They are proprietary, with no public API and licensing restrictions for use in a product.
+- Some are themselves partly built on BTS data, which this project uses directly.
+
+**Possible extension:** Passenger satisfaction could complement the score for renovation decisions specifically: high demand pressure combined with poor terminal satisfaction suggests the largest renovation upside. This would require a source with broad coverage and a license that permits use.
+
 ## Data cleaning and joining 
 ### D4. FAA CY 2025 enplanement data is preliminary
 **Decision:** Using FAA CY 2025 enplanements as the latest year, labeled as preliminary in both the agent's answers and the documentation.
@@ -270,7 +282,7 @@ A flag does not always indicate an extreme profile: an airport in a crowded midd
 ## D20. Regional answers are grouped by hub size
 **Decision:** When a question covers airports of different sizes (e.g., "New England"), the agent groups results by hub size and reports each airport's national rank within its group (e.g., "Boston: 9th of 30 large hubs").
 
-**Why:** Scores are percentiles within hub groups (D3, D17), so they are not comparable across groups. Sorting a mixed region by score would place a strong small airport above a good large one. For example, Bangor (6th of 258 Nonhubs, score 0.85) would appear ahead of Boston (9th of 30 Large hubs, score 0.66), and Martha's Vineyard (68th of 258 Nonhubs) ahead of Portland, ME (25th of 79 Small hubs). That ordering is meaningless for an investor.
+**Why:** Scores are percentiles within hub groups (D3, D17), so they are not comparable across groups. Sorting a mixed region by score would place a strong small airport above a good large one. For example, Bangor Bangor (6th of 251 ranked Nonhubs, score 0.85) would appear ahead of Boston (9th of 30 Large hubs, score 0.66), and Martha's Vineyard (68th of 251 ranked Nonhubs) ahead of Portland, ME (25th of 79 Small hubs). That ordering is meaningless for an investor.
 
 **How found:** Reviewing the first New England results.
 

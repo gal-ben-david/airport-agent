@@ -42,22 +42,22 @@ All T-100 metrics are measured on the **departures (origin) side** — i.e., for
 The base dataset is BTS T-100 Segment All Carriers CY2025, filtered to rows where `DEPARTURES_PERFORMED > 0` and `ORIGIN ≠ DEST` (566,030 of 571,205 rows). (D10, D13, D14)
 Long-haul threshold: `DISTANCE ≥ 3,000 miles` (configurable). (D15)
 
-T-100 CLASS codes used:
-- F = domestic scheduled passenger
-- L = international scheduled passenger
-- G = domestic all-cargo / charter
-- P = international all-cargo / charter
+T-100 CLASS codes used (D14). Each class covers domestic and international flights:
+- F = scheduled passenger
+- L = non-scheduled (charter) passenger
+- G = scheduled all-cargo
+- P = non-scheduled all-cargo
 
 | Column | Meaning | Unit / format | Source & period | How computed | NaN meaning | Decisions |
 |--------|---------|---------------|-----------------|--------------|-------------|-----------|
 | `departures_FL` | Total passenger-service flight departures (scheduled + charter) | Count (float) | T-100 Segment All Carriers, CY2025 | `sum(DEPARTURES_PERFORMED)` for CLASS F + L, by ORIGIN | NaN when `has_t100` is False (no T-100 data) | D13, D14 |
 | `passengers_FL` | Total passengers carried on departing passenger-service flights | Count (float) | T-100 Segment All Carriers, CY2025 | `sum(PASSENGERS)` for CLASS F + L, by ORIGIN | NaN when `has_t100` is False | D13, D14 |
 | `tot_departures_all` | Total flight departures across all service classes (passenger + cargo) | Count (float) | T-100 Segment All Carriers, CY2025 | `sum(DEPARTURES_PERFORMED)` for CLASS F + L + G + P, by ORIGIN | NaN when `has_t100` is False | D13, D14 |
-| `load_factor` | Passenger load factor on scheduled domestic service | Fraction 0–1 (e.g., `0.817` = 81.7%) | T-100 Segment All Carriers, CY2025 | `sum(PASSENGERS) / sum(SEATS)` for CLASS F only, by ORIGIN | NaN when no CLASS F service (no T-100, or airport has only cargo / charter service) | D13, D14 |
+| `load_factor` | Passenger load factor on scheduled passenger service | Fraction 0–1 (e.g., `0.817` = 81.7%) | T-100 Segment All Carriers, CY2025 | `sum(PASSENGERS) / sum(SEATS)` for CLASS F only, by ORIGIN | NaN when no CLASS F service (no T-100, or airport has only charter / all-cargo service) | D13, D14 |
 | `long_haul_share_flights` | Share of scheduled departures that are long-haul (≥3,000 mi) | Fraction 0–1 | T-100 Segment All Carriers, CY2025 | `sum(DEPARTURES_PERFORMED where DISTANCE ≥ 3000) / sum(DEPARTURES_PERFORMED)` for CLASS F only, by ORIGIN | 0.0 when `has_t100` is True but no long-haul flights; NaN when `has_t100` is False | D14, D15 |
 | `long_haul_share_pax` | Share of scheduled passengers travelling on long-haul flights (≥3,000 mi) | Fraction 0–1 | T-100 Segment All Carriers, CY2025 | `sum(PASSENGERS where DISTANCE ≥ 3000) / sum(PASSENGERS)` for CLASS F only, by ORIGIN | 0.0 when `has_t100` is True but no long-haul flights; NaN when `has_t100` is False | D14, D15 |
 | `long_haul_share_all_flights` | Share of total departures (all classes) that are long-haul (≥3,000 mi) | Fraction 0–1 | T-100 Segment All Carriers, CY2025 | `sum(DEPARTURES_PERFORMED where DISTANCE ≥ 3000) / sum(DEPARTURES_PERFORMED)` for CLASS F + L + G + P, by ORIGIN | 0.0 when `has_t100` is True but no long-haul flights; NaN when `has_t100` is False | D14, D15 |
-| `cargo_departure_share` | Share of total departures operated by cargo / charter service | Fraction 0–1 | T-100 Segment All Carriers, CY2025 | `sum(DEPARTURES_PERFORMED, CLASS G + P) / sum(DEPARTURES_PERFORMED, all classes)`, by ORIGIN | 0.0 when `has_t100` is True but no cargo service; NaN when `has_t100` is False | D13, D14 |
+| `cargo_departure_share` | Share of total departures operated by all-cargo service (scheduled + non-scheduled) | Fraction 0–1 | T-100 Segment All Carriers, CY2025 | `sum(DEPARTURES_PERFORMED, CLASS G + P) / sum(DEPARTURES_PERFORMED, all classes)`, by ORIGIN | 0.0 when `has_t100` is True but no all-cargo service; NaN when `has_t100` is False | D13, D14 |
 
 ---
 
@@ -81,7 +81,7 @@ Coverage: 358 of 402 airports; missing ones are 43 Nonhub and 1 Small hub (New H
 | Column | Meaning | Unit / format | Source & period | How computed | NaN meaning | Decisions |
 |--------|---------|---------------|-----------------|--------------|-------------|-----------|
 | `has_t100` | Whether the airport was matched to at least one T-100 origin record | Boolean (`True` / `False`) | Derived | `True` if `iata` appears in the T-100 ORIGIN set (all classes). False for 1 airport: Ceiba, PR (RVR / NRR) | Never NaN | D9, D10 |
-| `t100_vs_faa_diff` | Relative gap between T-100 CLASS F+L passengers (departures side, IATA-mapped) and FAA enplanements | Fraction 0–1 (e.g., `0.006` = T-100 is 0.6% above FAA) | Derived from T-100 + FAA | `(passengers_FL − enpl_2025) / enpl_2025` using IATA-mapped join. NaN when `has_t100` is False, or when the airport has T-100 data but no CLASS F+L service (e.g. pure charter/cargo). | NaN for 1 airport where `has_t100` is False (Ceiba), plus any airports with no CLASS F+L flights in T-100 | D9 |
+| `t100_vs_faa_diff` | Relative gap between T-100 CLASS F+L passengers (departures side, IATA-mapped) and FAA enplanements | Fraction 0–1 (e.g., `0.006` = T-100 is 0.6% above FAA) | Derived from T-100 + FAA | `(passengers_FL − enpl_2025) / enpl_2025` using IATA-mapped join. NaN when `has_t100` is False, or when the airport has T-100 data but no CLASS F+L service (e.g. all-cargo only). | NaN for 1 airport where `has_t100` is False (Ceiba), plus any airports with no CLASS F+L flights in T-100 | D9 |
 | `data_confidence` | Quality of the FAA↔T-100 cross-validation | Text: `high`, `low`, or `no_t100` | Derived | `"no_t100"` only when `has_t100` is False (1 airport: Ceiba); `"high"` when `abs(t100_vs_faa_diff) ≤ 0.10`; `"low"` otherwise (gap > 10% or `t100_vs_faa_diff` is NaN despite having T-100). All `low` airports are Nonhub. | Never NaN | D9 |
 | `has_delays` | Whether the airport appears in BTS on-time delay data | Boolean (`True` / `False`) | Derived | `True` if `iata` appears in the delay aggregation. `False` for 44 airports (43 Nonhub + 1 Small hub) | Never NaN | D12 |
 
@@ -102,4 +102,4 @@ Consequences:
 
 ### `load_factor` can be NaN even when `has_t100 = True`
 
-`load_factor` requires CLASS F (scheduled domestic passenger) data. An airport served only by cargo or charter operations (CLASS G / P / L but not F) would have `has_t100 = True` but `load_factor = NaN`. Grand Canyon West (1G4) is an example: its T-100 traffic is primarily air-tour charter (CLASS G), so `passengers_FL` is far below its FAA enplanements and `data_confidence = "low"`.
+`load_factor` requires CLASS F (scheduled passenger) data. An airport served only by charter or all-cargo operations (CLASS L / G / P but not F) would have `has_t100 = True` but `load_factor = NaN`. Grand Canyon West (1G4) is a near-example: its T-100 traffic is mostly air-tour charter (CLASS L: 667 of 764 departures; only 97 CLASS F), so `passengers_FL` is far below its FAA enplanements and `data_confidence = "low"`.
