@@ -14,6 +14,7 @@ Run from server/:
 import sys
 import time
 from collections import Counter
+from contextlib import nullcontext
 from datetime import datetime
 
 from app.agent.agent import MODEL, run_agent
@@ -51,19 +52,26 @@ def _select(ids: list[str]) -> list[Case]:
 
 
 def run_case(case: Case, parent: dict | None) -> dict:
-    """Ask the case question (after the parent conversation, if any) and evaluate it."""
+    """Ask the case question (after the parent conversation and setup turns, if any)
+    and evaluate the final answer. The case fixture, if any, wraps all turns."""
     history = list(parent["messages"]) if parent else []
-    history.append({"role": "user", "content": case.question})
-    prior_calls = parent["all_tool_calls"] if parent else []
+    prior_calls = list(parent["all_tool_calls"]) if parent else []
 
     started = time.time()
     try:
-        result = run_agent(history)
+        with case.fixture() if case.fixture else nullcontext():
+            for turn in case.setup:
+                history.append({"role": "user", "content": turn})
+                setup_result = run_agent(history)
+                history.append({"role": "assistant", "content": setup_result["answer"]})
+                prior_calls += setup_result["tool_calls"]
+            history.append({"role": "user", "content": case.question})
+            result = run_agent(history)
     except Exception as e:  # API or config error: report it, keep going
         return {"id": case.id, "question": case.question, "error": f"{type(e).__name__}: {e}",
-                "passed": False, "failed": ["run error"], "tool_calls": [], "answer": "",
-                "ungrounded": [], "n_numbers": 0, "guardrail": None, "seconds": time.time() - started,
-                "messages": history, "all_tool_calls": prior_calls}
+                "passed": False, "failed": ["run error"], "soft_failed": [], "tool_calls": [],
+                "answer": "", "ungrounded": [], "n_numbers": 0, "guardrail": None,
+                "seconds": time.time() - started, "messages": history, "all_tool_calls": prior_calls}
 
     # Numbers may come from any tool result in the conversation; earlier answers
     # were grounded in the earlier turns' tool results.
@@ -71,7 +79,9 @@ def run_case(case: Case, parent: dict | None) -> dict:
     questions = [m["content"] for m in history if m["role"] == "user"]
     ungrounded = ungrounded_numbers(result["answer"], all_calls, questions)
 
-    failed = [c.name for c in _expected_tool_checks(case) + case.checks if not c.fn(result)]
+    checks = _expected_tool_checks(case) + case.checks
+    failed = [c.name for c in checks if c.required and not c.fn(result)]
+    soft_failed = [c.name for c in checks if not c.required and not c.fn(result)]
     if ungrounded:
         failed.append("grounding")
 
@@ -84,6 +94,7 @@ def run_case(case: Case, parent: dict | None) -> dict:
         "tool_calls": result["tool_calls"],
         "passed": not failed,
         "failed": failed,
+        "soft_failed": soft_failed,
         "superlatives": offending_superlatives(result["answer"]),
         "ungrounded": ungrounded,
         "n_numbers": len(answer_numbers(result["answer"])),
@@ -97,6 +108,11 @@ def run_case(case: Case, parent: dict | None) -> dict:
 def _tools_used(r: dict) -> str:
     counts = Counter(c["name"] for c in r["tool_calls"])
     return ", ".join(f"{n} x{k}" if k > 1 else n for n, k in counts.items()) or "none"
+
+
+def _failed_text(r: dict) -> str:
+    """Failed checks, then soft checks that failed (shown, but the case can still pass)."""
+    return "; ".join(r["failed"] + r.get("soft_failed", []))
 
 
 def _retry_text(r: dict) -> str:
@@ -130,7 +146,7 @@ def print_report(results: list[dict]) -> None:
     print("-" * (w + 100))
     for r in results:
         status = "PASS" if r["passed"] else "FAIL"
-        print(f"{r['id']:<{w}}  {status:<6}  {_tools_used(r):<45}  {'; '.join(r['failed'])}")
+        print(f"{r['id']:<{w}}  {status:<6}  {_tools_used(r):<45}  {_failed_text(r)}")
 
     print("\nGrounding (numbers in the answer not found in tool results):")
     for r in results:
@@ -176,7 +192,7 @@ def write_markdown(results: list[dict]) -> None:
     for r in results:
         case = r["id"] + (f" (after {r['after']})" if r.get("after") else "")
         lines.append(f"| {case} | {'PASS' if r['passed'] else '**FAIL**'} | "
-                     f"{_cell('; '.join(r['failed'])) or '–'} | {_cell(_tools_used(r))} |")
+                     f"{_cell(_failed_text(r)) or '–'} | {_cell(_tools_used(r))} |")
 
     lines += [
         "",
