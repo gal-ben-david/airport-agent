@@ -1,6 +1,7 @@
 """Multi-airport tools: rank_airports, compare_airports."""
 
 from .common import (
+    DELAY_CAVEAT,
     HUB_LABELS,
     HUB_ORDER,
     REGIONS,
@@ -157,6 +158,7 @@ def rank_airports(states=None, hub: str | None = None, top_n: int = 5) -> dict:
             "Scores are percentiles within each FAA hub group, computed nationally, "
             "so they are comparable only inside a group, not across groups (D6, D20)."
         ),
+        delay_caveat=DELAY_CAVEAT,
     )
 
 

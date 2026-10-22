@@ -47,6 +47,15 @@ COMPONENT_SOURCES = {
     "scale": "enpl_2025",
 }
 
+# What the delay metrics cover, so the agent doesn't say the source lacks a cause
+# breakdown when only these tools do (D12).
+DELAY_CAVEAT = (
+    "The BTS source breaks delays down by cause (air carrier, extreme weather, NAS, "
+    "security, late-arriving aircraft). These tools include only the NAS delay rate, the "
+    "overall delay rate and the cancellation rate. Non-extreme weather (e.g., fog) is "
+    "counted inside NAS and cannot be separated."
+)
+
 UNITS = {
     "display": "*_display fields are pre-formatted from the unrounded values; quote them exactly",
     "enplanements": "passengers boarding (count, calendar year)",
@@ -56,6 +65,7 @@ UNITS = {
     "nas_delay_rate": "fraction of arrivals with NAS-attributed delay of 15+ min",
     "delay_rate": "fraction of arrivals delayed 15+ min, any cause",
     "cancel_rate": "fraction of arrivals cancelled",
+    "delay_causes": DELAY_CAVEAT,
     "shares": "fraction 0-1",
     "percentiles": (
         "0-1 within FAA hub group; higher = stronger investment signal on that component "
