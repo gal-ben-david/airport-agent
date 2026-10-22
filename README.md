@@ -22,6 +22,16 @@ See **[docs/design.md](docs/design.md)** for the design, scoring methodology, tr
 
 ---
 
+## Tech stack
+
+- Python 3.13, pandas
+- Anthropic Python SDK: Claude (`claude-sonnet-5-5`) with native tool use
+- Streamlit (chat UI)
+- pytest (deterministic tests)
+- OpenSky Network REST API (OAuth2 client credentials) for live traffic
+
+---
+
 ## Quick start
 
 Requirements: Python 3.13 (3.11+ should work).
@@ -60,7 +70,7 @@ cd server && pytest
 python -m evals.run_evals   # from server/
 ```
 
-Latest evaluation results: **[docs/eval-results.md](docs/eval-results.md)** (final run: 28/29 passed, every answer grounded; the one failure is a phrase check missing a correct answer, see D27).
+Latest evaluation results: **[docs/eval-results.md](docs/eval-results.md)** (final run: 29/29 passed, every answer grounded).
 
 Manual check scripts (print results for reading, not pass/fail):
 - `server/scripts/check_tools.py`: runs every tool on sample airports.
@@ -112,7 +122,7 @@ python server/scripts/build_data.py --write  # overwrites data/processed/ only i
 
 | Source | What it provides |
 |---|---|
-| FAA Passenger Boarding (Enplanement) Data, CY2019 / CY2024 / CY2025 (preliminary) | Passengers per airport, hub size |
+| FAA Passenger Boarding (Enplanement) Data, CY2019 / CY2024 / CY2025 (final) | Passengers per airport, hub size |
 | BTS T-100 Segment (All Carriers), 2025 | Flights, seats, passengers, distance, service class |
 | BTS Airline On-Time Statistics and Delay Causes, 2025 | Delays by cause (NAS), cancellations |
 | OurAirports | Mapping between FAA, IATA and ICAO airport codes |
@@ -125,9 +135,8 @@ All data is public. Sources and validation are documented in [docs/validation.md
 ## Main limitations
 
 - Unmet demand is not measured directly; the agent uses proxies (load factor, congestion, growth) and says so.
-- FAA 2025 passenger data is preliminary.
 - Delay data covers domestic arrivals of large US carriers only.
 - Live OpenSky data counts tracked flights, not passengers, and is never used in the score.
 - This is data analysis, not financial advice.
 
-More in [docs/design.md](docs/design.md#assumptions-and-limitations).
+More in [docs/design.md](docs/design.md#9-assumptions-and-limitations).

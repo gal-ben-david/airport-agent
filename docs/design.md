@@ -46,13 +46,21 @@ The agent is a proof of concept: analysts ask questions in plain English, and ge
 
 | Source | Used for | Key limitation |
 |---|---|---|
-| FAA enplanements (2019, 2024, 2025) | Passenger volume, growth, hub size | 2025 is preliminary |
+| FAA enplanements (2019, 2024, 2025) | Passenger volume, growth, hub size | 2025 is final (published September 24, 2026) |
 | BTS T-100 Segment, All Carriers (2025) | Load factor, flights, long-haul share, cargo share | Segment counting (multi-stop routes count a passenger twice) |
 | BTS delay causes (2025) | NAS delay rate (congestion) | Domestic arrivals of large US carriers only |
 | OurAirports | FAA ↔ IATA ↔ ICAO code mapping | Community-maintained, so validated against T-100 |
 | OpenSky Network API (live) | Recent arrivals and departures | ADS-B tracking, not passengers; context only |
 
-**Scope:** the 402 FAA Primary airports (more than 10,000 passengers a year), all metrics for calendar year 2025 (D2, D11). Published airport rankings (J.D. Power, WSJ, Skytrax) were not used: they measure passenger experience, cover only the largest airports, and don't provide raw data (D23).
+**Airport codes:** the sources use three code systems. **FAA codes** (used in FAA data, e.g., IWA for Mesa), **IATA codes** (used by airlines and in BTS data, e.g., AZA), and **ICAO codes** (used in flight tracking such as OpenSky, e.g., KIWA). Usually they match (BOS, KBOS), but not always, so the sources are joined through a validated code mapping (D9).
+
+**Scope:** the 402 FAA Primary airports (more than 10,000 passengers a year), all metrics for calendar year 2025 (D2, D11). Published airport rankings (J.D. Power, WSJ, Skytrax) were not used: they measure passenger experience, cover only the largest airports, and don't provide raw data (D23). The data year is 2025, not 2026: 2026 data covers only part of the year (to August), and a partial year is biased by seasonality (D11).
+
+**Data as of:** FAA CY2025 enplanements (final, published September 24, 2026); BTS T-100 Segment and delay causes for calendar year 2025 (downloaded October 20, 2026); OurAirports (downloaded October 20, 2026); OpenSky live (last 7 full days at question time).
+
+**Domestic vs. international:** passenger, capacity and long-haul metrics include international flights (combined T-100, D10); delay metrics cover domestic flights only.
+
+**Why these years:** each metric uses only the years it needs. Growth is a trend, so it uses FAA passenger data for 2019 (the last year before COVID) and 2025, plus 2024 for recent momentum; the years in between are not needed, since CAGR depends only on its endpoints (D5). Load factor, congestion, long-haul and cargo shares describe the airport's current state, so they use 2025 only, the same year as the latest passenger data (D11). The one thing this leaves out is how airline capacity changed over time: comparing 2019 and 2025 seats would show whether demand is outpacing supply.
 
 **Validation highlights** (full log in [validation.md](validation.md)):
 - Cross-checking T-100 against FAA revealed that the first T-100 file was domestic-only (LAX −32%, JFK −54%). After switching to the combined table, the key airports matched within 1% (D10).
@@ -146,7 +154,7 @@ The guiding rule: **code computes, the language model explains.**
 **Agent evaluation** (29 cases, D27): the four assignment questions and follow-ups, known risks (cross-group comparison, ambiguous city, forecast, unranked airport, custom region and threshold), live-data failures (API down, with and without cache), and prompt injection. Each case checks the tools called and the answer text; a grounding check verifies every number.
 
 - **No LLM judge:** checks are deterministic, so the same answer always gets the same verdict, and each failure points to one rule.
-- **Final run: 28/29**, every answer grounded, 4 guardrail retries. The one failure (Bangor vs. Boston) is a correct answer whose wording ("can't be ranked against each other") a phrase check missed.
+- **Final run: 29/29**, every answer grounded, 2 guardrail retries.
 - Across evaluation runs, the guardrail corrected numbers in up to 5 of 29 first drafts per run, including rounded values (599.4 → "599") and a mis-copied digit (25,078,968 written as "24,078,968"), an error a reader would be unlikely to notice.
 - **Checks were tested against deliberately wrong answers**, to confirm they fail when they should.
 - **Limitation:** many checks look for specific words, so a correct answer worded differently can fail. Every failure is read before changing the agent.
@@ -160,7 +168,7 @@ The guiding rule: **code computes, the language model explains.**
 | Peer groups by hub size | Fair comparisons; small airports not buried | Scores can't be compared across groups, so regional answers are grouped (D20) |
 | Percentile normalization | Robust to outliers, easy to explain | Loses magnitude: a small lead and a large lead can look similar |
 | Neutral value for missing data | Neither rewards nor penalizes gaps | An airport with missing data is assumed average on that component |
-| CAGR from 2019 | Separates real growth from COVID recovery | Depends on two endpoints; 2025 is preliminary |
+| CAGR from 2019 | Separates real growth from COVID recovery | Depends on two endpoints |
 | NAS delays as congestion | Closest public signal of system strain | Mostly runway and airspace limits, which a terminal alone may not fix; includes non-extreme weather |
 | Long haul and cargo as context only | Score stays focused on terminal demand | A revenue-focused investor might value long-haul traffic |
 | Precomputed data, live API only for context | Fast, reproducible, deterministic | Data is only as fresh as the last pipeline run |
@@ -177,30 +185,48 @@ The guiding rule: **code computes, the language model explains.**
 - **Delay data** covers domestic arrivals of large US carriers only. Airports served mainly by smaller airlines may have no delay data (e.g., New Haven), and very small samples can be unreliable (e.g., Vero Beach: 42 reported arrivals).
 - **Airports with regulatory caps** on flights may show low delays despite being constrained, since excess demand is never scheduled.
 - **The tools don't include delay breakdowns by cause** other than NAS, although the source data has them.
-- **Live OpenSky data** counts tracked flights (not passengers), may have coverage gaps, and compares one recent week with a full-year average. It is context only. Its free tier is for non-commercial use.
+- **Live OpenSky data** counts tracked flights (not passengers), may have coverage gaps, and compares one recent week with a full-year average: the baseline is 2025 average departures per day from T-100 (all departures / 365). It is context only. Its free tier is for non-commercial use.
 
 ---
 
 ## 10. Path to production
 
-- **Data:** a scheduled ETL job loading a database (e.g., PostgreSQL), with versioned refreshes and the validation checks run automatically.
-- **Scale:** the agent is stateless, so it can run as multiple instances behind a load balancer. Conversations could be stored server-side (e.g., Redis). Tool results can be cached by input, since the data changes rarely, and prompt caching can reduce the cost of the fixed system prompt and tool definitions.
-- **Redundancy:** the live tool already has a cache and a stale-data fallback; in production the cache would be shared (e.g., Redis), and the LLM provider could have a fallback.
-- **Monitoring:** log every tool call, grounding result and retry; track the grounding retry rate as a quality signal.
-- **Interface:** a FastAPI endpoint and a React client; for end users, friendly source notes instead of raw tool JSON.
-- **Licensing:** a commercial OpenSky license.
+### Scale
+- **Deployment:** containerize the app (Docker) for consistent deployment.
+- **Stateless agent:** each request carries its own conversation history (D24), so the agent can run as many instances behind a load balancer, with no shared state between them.
+- **Conversation storage:** server-side (e.g., Redis), keyed by session, with long conversations trimmed or summarized.
+- **Data:** a database (e.g., PostgreSQL) loaded by a scheduled ETL job, instead of in-memory tables.
+- **Cost and latency:** tool results cached by input (the data changes rarely); prompt caching for the fixed system prompt and tool definitions.
+- **Protection:** rate limiting per user, and authentication.
 
-**With more time:**
-- An extreme-weather delay rate (from the BTS weather cause category) as a context metric.
-- A minimum sample size for delay rates, to handle cases like Vero Beach.
-- 2019 T-100 data, to compare seat capacity growth with passenger growth: a direct signal of demand outpacing supply.
-- An LLM-as-judge rubric for explanation quality, as a complement to the deterministic checks.
-- Running the evals several times to measure consistency.
-- Passenger satisfaction data, if a broadly licensed source exists: high demand pressure combined with poor terminal satisfaction suggests the largest renovation upside.
+### Redundancy and reliability
+- **Live API:** the OpenSky tool already has a timeout, a retry, a cache and a stale-data fallback (D22). In production, the cache would be shared between instances (e.g., Redis).
+- **LLM provider:** a fallback model or provider if the primary API is unavailable.
+- **Graceful degradation:** every tool already returns an error message instead of failing, and the agent explains it to the user (D24).
+- **Data refresh:** versioned data loads, with the validation checks of build_data.py run automatically, so a bad source file never replaces good data.
+
+### Monitoring
+- Log every tool call, grounding result and correction retry.
+- Track the grounding retry rate and the eval pass rate over time, as quality signals.
+- Run the eval suite automatically on every change to the prompt, tools or model.
+
+### Interface and licensing
+- A FastAPI endpoint and a React client; for end users, friendly source notes instead of raw tool JSON.
+- A commercial OpenSky license.
+
+## 11. What I would do with more time
+
+- **Extreme-weather delay rate:** add it as a context metric from the BTS weather cause category, so weather questions can be answered with data.
+- **Minimum sample size for delay rates:** treat a delay rate as missing below a minimum number of reported arrivals (e.g., Vero Beach: 42 arrivals).
+- **Supply vs. demand growth:** add 2019 T-100 data, to compare seat capacity growth with passenger growth, a direct signal of demand outpacing supply.
+- **Stricter grounding:** exempt only user numbers that aren't presented as airport metrics (D29).
+- **Explanation quality:** an LLM-as-judge rubric, as a complement to the deterministic checks.
+- **Consistency:** run the eval suite several times and report the pass rate per case.
+- **Passenger satisfaction:** if a broadly licensed source exists, combine it with the score: high demand pressure plus poor terminal satisfaction suggests the largest renovation upside.
 
 ---
 
-## 11. The assignment questions, answered
+## 12. The assignment questions, answered
 
 Short summaries of the agent's answers (2025 data; full answers in [eval-results.md](eval-results.md)):
 

@@ -239,6 +239,10 @@ def names_driver(code: str, component: str, metric: str, label: str) -> Check:
     return Check(f"names {metric} with its value and peer comparison", fn)
 
 
+# Prompt rule 3: the answer states the data year. "CAGR 2019-2025" alone doesn't count.
+STATES_DATA_YEAR = matches(r"(calendar year|data( year)?|figures|metrics)\W[^.\n]{0,30}\b2025\b"
+                           r"|\b2025\s+(data|figures|metrics|enplanements)\b|\(2025\b",
+                           "states the data year (2025)")
 REFUSES = matches(r"\b(can't|cannot|can not|won't|will not|unable|not able|not possible)\b",
                   "declines")
 
@@ -256,7 +260,7 @@ CASES = [
             GROUPED_BY_HUB,
             has("9th of 30 large hubs"),       # BOS: national rank within its group
             no_cross_group_superlatives(),
-            has("preliminary"),                # D4
+            STATES_DATA_YEAR,                  # D4, D11
         ],
     ),
     Case(
@@ -514,7 +518,7 @@ CASES = [
         question="How does SFO look?",
         expected_tools=[("get_airport_profile", "compare_airports")],
         checks=[
-            has("preliminary"),
+            STATES_DATA_YEAR,
             # Grounding (every case) catches rounded numbers.
         ],
     ),

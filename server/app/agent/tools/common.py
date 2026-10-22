@@ -25,8 +25,8 @@ from app.core.scoring import NEW_ENGLAND, SCORES_CSV, WEIGHTS
 
 DATA_YEAR = 2025
 DATA_STATUS = (
-    "Calendar year 2025. FAA 2025 enplanements are preliminary and may be "
-    "revised (D4, D11)."
+    "Calendar year 2025. FAA 2025 enplanements are final (published "
+    "September 24, 2026) (D4, D11)."
 )
 
 LONG_HAUL_MILES = 3000  # D15: default threshold, stored in airport_scores.csv

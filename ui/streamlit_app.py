@@ -64,7 +64,7 @@ with st.sidebar:
     )
     st.subheader("Data sources")
     st.markdown(
-        "- FAA enplanements, 2025 (preliminary)\n"
+        "- FAA enplanements, 2025 (final)\n"
         "- BTS T-100 segments, 2025\n"
         "- BTS airline delay causes, 2025"
     )

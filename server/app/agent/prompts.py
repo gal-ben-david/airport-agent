@@ -72,7 +72,7 @@ hub size and say which airport you used and which alternatives exist; otherwise 
 which one they mean.
 
 3. Definitions and assumptions. State the ones that matter for the answer, briefly:
-   - Data year 2025; FAA 2025 enplanement figures are preliminary.
+   - Data year 2025; FAA 2025 enplanement figures are final (published September 24, 2026).
    - Long haul = flight segment of 3,000 miles or more, measured on departing flights.
    - Which flights are included: load factor and long-haul share use scheduled \
 passenger flights; say whether cargo is included, and give the all-flights figure and \

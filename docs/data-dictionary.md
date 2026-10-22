@@ -1,10 +1,11 @@
 # Data Dictionary — `airport_metrics`
 
 **File:** `data/processed/airport_metrics.csv`
-**Rows:** 402 — one per FAA Primary airport (S/L = "P", i.e., >10,000 annual enplanements), based on FAA CY 2025 preliminary data. (D2, D8)
+**Rows:** 402 — one per FAA Primary airport (S/L = "P", i.e., >10,000 annual enplanements), based on FAA CY 2025 final data. (D2, D8)
 **Columns:** 28
 **Primary key:** `code` (FAA location identifier, unique per row)
 **Data year:** calendar year 2025 for all metrics unless stated otherwise. (D11)
+**Units:** rates and shares are stored as fractions (0–1) and shown as percentages through the tools' `*_display` values (e.g., `load_factor` 0.8235 → `load_factor_display` "82.3%").
 
 ---
 
@@ -27,7 +28,7 @@ All enplanement figures are "boardings" — each leg of a connection counts sepa
 
 | Column | Meaning | Unit / format | Source & period | How computed | NaN meaning | Decisions |
 |--------|---------|---------------|-----------------|--------------|-------------|-----------|
-| `enpl_2025` | Annual enplanements for calendar year 2025 | Count (integer-valued float) | FAA CY 2025 preliminary enplanements Excel | Column `CY 25 Enplanements`, after dropping non-airport summary rows | Never NaN (eligibility criterion) | D4, D8 |
+| `enpl_2025` | Annual enplanements for calendar year 2025 | Count (integer-valued float) | FAA CY 2025 final enplanements Excel | Column `CY 25 Enplanements`, after dropping non-airport summary rows | Never NaN (eligibility criterion) | D4, D8 |
 | `enpl_2024` | Annual enplanements for calendar year 2024 | Count (integer-valued float) | FAA CY 2025 Excel (also contains prior year), column `CY 24 Enplanements` | Direct copy | Never NaN for Primary airports | D11 |
 | `enpl_2019` | Annual enplanements for calendar year 2019 (pre-pandemic baseline) | Count (integer) | FAA CY 2019 enplanements Excel | Left-joined on FAA code; loaded regardless of the airport's 2019 classification (may have been non-primary in 2019) | NaN for 10 airports with no 2019 record (new commercial service, code changes unresolved in 2019 file) | D5, D8 |
 | `cagr_19_25` | Compound annual growth rate from 2019 to 2025 | Decimal fraction (e.g., `0.0026` = 0.26%/yr) | Derived | `(enpl_2025 / enpl_2019) ^ (1/6) − 1`, with N_YEARS = 6 | NaN when `enpl_2019` is NaN (see `growth_flag`) | D5 |
