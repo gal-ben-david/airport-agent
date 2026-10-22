@@ -48,8 +48,8 @@ def load_ourairports() -> pd.DataFrame:
     return oa.sort_values("scheduled_service", ascending=False)
 
 
-def build_codes() -> pd.DataFrame:
-    airports = pd.read_csv(SCORES_CSV, usecols=["code", "iata", "name", "state"])
+def build_codes(scores_csv: Path = SCORES_CSV) -> pd.DataFrame:
+    airports = pd.read_csv(scores_csv, usecols=["code", "iata", "name", "state"])
     oa = load_ourairports()
 
     by_iata = oa.dropna(subset=["iata_code"]).drop_duplicates("iata_code").set_index("iata_code")["icao"]

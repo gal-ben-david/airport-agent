@@ -27,7 +27,7 @@
 - Precomputed metrics make the scoring fast, reproducible and deterministic.
 - At this size (402 airports), in-memory tables are faster and simpler than a database server.
 
-**Delivery:** The repository includes the raw source files (compressed), the processed tables, and the notebooks that build them.
+**Delivery:** The repository includes the raw source files (compressed), the processed tables, and the notebooks where the logic was developed. The processed tables are rebuilt from the raw files by `server/scripts/build_data.py`, which verifies the result matches the committed files.
 
 **Path to production:** Move the processed tables to a database (e.g., PostgreSQL) loaded by a scheduled ETL job, which supports more data, concurrent access and versioned refreshes.
 
@@ -101,7 +101,7 @@ CAGR = (enplanements_2025 / enplanements_2019)^(1/6) − 1: the equivalent stead
 ### D9. Airport identifiers: FAA codes vs. airline (IATA) codes
 **Problem:** FAA enplanement data uses FAA location identifiers, while T-100 and BTS delay data use airline (IATA) codes. For most airports they are identical, but not always (e.g., Mesa: FAA IWA / IATA AZA; Kalispell: FAA GPI / IATA FCA). Codes can also change over time (West Palm Beach: PBI in 2019 FAA data, DJT in 2025).
 
-**How found:** Cross-validation flagged 14 Primary airports with no T-100 match, including Mesa (1.0M passengers) and Kalispell (0.56M). All but one were code mismatches, not missing airports.
+**How found:** Cross-validation found 15 Primary airports with no T-100 match by FAA code, including Mesa (1.0M passengers) and Kalispell (0.56M): 14 were code mismatches (now mapped) and 1 (Ceiba, PR) has no T-100 data.
 
 **Decision:**
 - FAA codes are mapped to IATA codes using OurAirports [5], which lists both identifiers (`local_code`, `iata_code`) for each airport.

@@ -69,6 +69,16 @@ Manual check scripts (print results for reading, not pass/fail):
 
 ---
 
+## Rebuilding the data (optional)
+
+```bash
+pip install -r server/requirements-dev.txt   # includes openpyxl for the FAA files
+python server/scripts/build_data.py          # rebuilds and compares with committed files
+python server/scripts/build_data.py --write  # overwrites data/processed/ only if all match
+```
+
+---
+
 ## Project structure
 
 ```
@@ -81,7 +91,7 @@ Manual check scripts (print results for reading, not pass/fail):
 │   │       ├── grounding.py       # number grounding check (runtime + evals)
 │   │       └── tools/             # read-only tools + live OpenSky tool
 │   ├── evals/                     # evaluation suite (cases, runner, fixtures)
-│   ├── scripts/                   # data build and manual check scripts
+│   ├── scripts/                   # build_data.py (data rebuild) and manual check scripts
 │   └── tests/                     # pytest suite
 ├── ui/streamlit_app.py            # thin chat UI
 ├── data/

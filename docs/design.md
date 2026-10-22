@@ -35,7 +35,7 @@ The agent is a proof of concept: analysts ask questions in plain English, and ge
 ```
 
 **Key properties:**
-- **Historical data is processed offline** into small tables (D7). At 402 airports, in-memory tables are faster and simpler than a database; a database is the production path.
+- **Historical data is processed offline** into small tables (D7). At 402 airports, in-memory tables are faster and simpler than a database; a database is the production path. The processed data is rebuilt from the raw files by `server/scripts/build_data.py`, which verifies the result matches the committed files.
 - **Scores are computed in code** and stored. The language model can describe them but cannot change them.
 - **The agent is stateless** (D24): each request carries the chat history; numbers are re-fetched through tools on every turn. Any server instance can handle any request, which allows horizontal scaling.
 - **The UI is thin** (D26): Streamlit only sends messages and displays answers, with a "Tools used" panel that shows every tool call. A FastAPI endpoint and a React client could replace it without changing the agent.
@@ -56,7 +56,7 @@ The agent is a proof of concept: analysts ask questions in plain English, and ge
 
 **Validation highlights** (full log in [validation.md](validation.md)):
 - Cross-checking T-100 against FAA revealed that the first T-100 file was domestic-only (LAX −32%, JFK −54%). After switching to the combined table, the key airports matched within 1% (D10).
-- 14 airports seemed to be missing from T-100; they were FAA vs. airline code mismatches (e.g., Mesa: FAA IWA, airline AZA), fixed with a validated code mapping (D9).
+- 15 airports had no T-100 match by FAA code: 14 were code mismatches (now mapped with a validated code mapping, e.g., Mesa: FAA IWA, airline AZA; D9) and 1 (Ceiba, PR) has no T-100 data.
 - Every airport gets a data-confidence flag from this cross-check (383 high, 18 low, 1 without T-100 data).
 
 ---
@@ -177,7 +177,6 @@ The guiding rule: **code computes, the language model explains.**
 - **Airports with regulatory caps** on flights may show low delays despite being constrained, since excess demand is never scheduled.
 - **The tools don't include delay breakdowns by cause** other than NAS, although the source data has them.
 - **Live OpenSky data** counts tracked flights (not passengers), may have coverage gaps, and compares one recent week with a full-year average. It is context only. Its free tier is for non-commercial use.
-- **The data pipeline** currently lives in notebooks and scripts; a single build script would make it fully reproducible with one command.
 
 ---
 
@@ -194,7 +193,6 @@ The guiding rule: **code computes, the language model explains.**
 - An extreme-weather delay rate (from the BTS weather cause category) as a context metric.
 - A minimum sample size for delay rates, to handle cases like Vero Beach.
 - 2019 T-100 data, to compare seat capacity growth with passenger growth: a direct signal of demand outpacing supply.
-- A single `build_data.py` script for the full pipeline.
 - An LLM-as-judge rubric for explanation quality, as a complement to the deterministic checks.
 - Running the evals several times to measure consistency.
 - Passenger satisfaction data, if a broadly licensed source exists: high demand pressure combined with poor terminal satisfaction suggests the largest renovation upside.

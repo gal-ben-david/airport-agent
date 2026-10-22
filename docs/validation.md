@@ -23,7 +23,7 @@ Each check: what was tested, the result, and what was fixed (if anything).
 ## Code mapping (OurAirports)
 | Check | Result | Action |
 |---|---|---|
-| Primary airports with no T-100 match by FAA code | 14, almost all FAA vs IATA code mismatches (e.g., Mesa IWA / AZA) | Candidate IATA codes verified by passenger totals |
+| Primary airports with no T-100 match by FAA code | 15: 14 code mismatches (now mapped, e.g., Mesa IWA / AZA) and 1 (Ceiba, PR) with no T-100 data | Candidate IATA codes verified by passenger totals |
 | Verification data | First check ran on the domestic-only T-100 table, so Saipan (mostly international routes) appeared 53% low | Rechecked on the combined table: Saipan within 9% |
 | Duplicate FAA codes in OurAirports mapping | 0 | ✓ |
 | Mapping vs 14 verified airports | 13 / 14 match | Manual override for DJT → PBI |
