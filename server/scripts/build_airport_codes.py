@@ -2,7 +2,7 @@
 Build data/processed/airport_codes.csv: FAA code, IATA code and ICAO code for
 the 402 Primary airports. The ICAO code is what the OpenSky API expects.
 
-Source: OurAirports (data/raw/airports.csv). Rows are matched on the IATA code
+Source: OurAirports (data/raw/airports.csv.gz). Rows are matched on the IATA code
 already used in airport_scores.csv (D9 mapping), falling back to the FAA code
 (OurAirports `local_code`). ICAO = `icao_code`, or `gps_code` when empty.
 
@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.core.scoring import REPO_ROOT, SCORES_CSV  # noqa: E402
 
-OURAIRPORTS_CSV = REPO_ROOT / "data" / "raw" / "airports.csv"
+OURAIRPORTS_CSV = REPO_ROOT / "data" / "raw" / "airports.csv.gz"  # committed; pandas decompresses
 CODES_CSV = REPO_ROOT / "data" / "processed" / "airport_codes.csv"
 
 # Codes that changed after the data period (as in D9): OurAirports already shows

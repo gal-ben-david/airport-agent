@@ -9,7 +9,7 @@ from app.core.scoring import REPO_ROOT
 
 from .common import LONG_HAUL_MILES, _clean, _error, _fmt, _identity, _lookup_code, _ok
 
-T100_CSV = REPO_ROOT / "data" / "raw" / "T_T100_SEGMENT_ALL_CARRIER.csv"
+T100_CSV = REPO_ROOT / "data" / "raw" / "T_T100_SEGMENT_ALL_CARRIER.csv.gz"  # committed; pandas decompresses
 
 MIN_THRESHOLD_MILES = 100
 MAX_THRESHOLD_MILES = 10_000

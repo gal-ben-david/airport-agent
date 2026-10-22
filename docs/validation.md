@@ -7,7 +7,7 @@ Each check: what was tested, the result, and what was fixed (if anything).
 |---|---|---|
 | Summary rows in the Excel file | 6 non-airport rows (e.g., "Total Primary Airports") | Removed |
 | Primary airport count vs FAA's own total | 402 = 402 | ✓ |
-| Hub counts vs FAA Terminal Area Forecast [3] | Large 30 = 30, Medium 35 = 35, Small 79 vs 78 | ✓ (minor preliminary-data difference) |
+| Hub counts vs [FAA Terminal Area Forecast summary FY2025–FY2055](https://taf.faa.gov/Downloads/TAFSummaryFY2025-FY2055.pdf) | Large 30 = 30, Medium 35 = 35, Small 79 vs 78 | ✓ (minor preliminary-data difference) |
 | Correct year column detected per file | 2019 → "CY 19", 2025 → "CY 25" (not the prior-year column) | ✓ |
 | Airports with no 2019 record | 11 flagged; one was a 4.26M-passenger Medium hub | Code change found (PBI → DJT), alias added (D9) |
 
