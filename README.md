@@ -110,7 +110,7 @@ python server/scripts/build_data.py --write  # overwrites data/processed/ only i
 ├── notebooks/                     # data exploration, validation and scoring review
 └── docs/
     ├── design.md                  # design and architecture document
-    ├── decisions.md               # decision log (D1–D29)
+    ├── decisions.md               # decision log (D1–D30)
     ├── validation.md              # data validation log
     ├── data-dictionary.md         # meaning of every metric
     └── eval-results.md            # latest evaluation run

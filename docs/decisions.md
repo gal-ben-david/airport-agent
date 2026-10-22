@@ -362,7 +362,7 @@ A flag does not always indicate an extreme profile: an airport in a crowded midd
 **Tradeoffs:**
 - A retry adds one model call (a few seconds) to an affected answer.
 - If the corrected answer is still ungrounded, it is returned anyway and the panel shows which numbers could not be verified, so the user sees the problem instead of a silently changed answer.
-- The check inherits the eval check's limits: it confirms that a number appears in the tool output, not that it is attached to the right airport or metric.
+- The check inherits the eval check's limits: it confirms that a number appears in the tool output, not that it is attached to the right airport or metric. For example, in one evaluation answer the agent described YNG's 385 departures as scheduled passenger flights; the number was correct, but they are charter flights (departures_FL counts scheduled and charter). Labeling each value in the tool output with its exact definition would reduce this risk.
 
 **Observed in evaluation:** Across evaluation runs, the guardrail corrected numbers in up to 5 of 29 first drafts per run, including rounded values ("599" for 599.4), a number repeated from the previous answer without being fetched again ("+14.1%"), and mis-copied digits ("24,078,968" for SFO's 25,078,968; "437,109" for Bangor's 437,108), errors a reader would be unlikely to notice. In the three final runs, it corrected 3, 1 and 2 of 29.
 

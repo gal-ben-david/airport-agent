@@ -1,6 +1,6 @@
 # Airport Investment Intelligence Agent: Design Document
 
-This document explains how the agent works, how airports are scored, the key tradeoffs, and where AI is and isn't used. Detailed reasoning for each decision is in [decisions.md](decisions.md) (referenced as D1–D29), and data checks are in [validation.md](validation.md).
+This document explains how the agent works, how airports are scored, the key tradeoffs, and where AI is and isn't used. Detailed reasoning for each decision is in [decisions.md](decisions.md) (referenced as D1–D30), and data checks are in [validation.md](validation.md).
 
 ---
 

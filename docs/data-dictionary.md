@@ -1,4 +1,9 @@
-# Data Dictionary — `airport_metrics`
+# Data Dictionary — processed data files
+
+Covers the three files in `data/processed/`:
+- `airport_metrics.csv`: the metrics (sections Identity to Data quality flags).
+- `airport_scores.csv`: the same 28 columns plus 12 score columns (section Scores).
+- `airport_codes.csv`: `code`, `iata` (as in Identity) and `icao` (section Airport codes).
 
 **File:** `data/processed/airport_metrics.csv`
 **Rows:** 402 — one per FAA Primary airport (S/L = "P", i.e., >10,000 annual enplanements), based on FAA CY 2025 final data. (D2, D8)
@@ -88,6 +93,35 @@ Coverage: 358 of 402 airports; missing ones are 43 Nonhub and 1 Small hub (New H
 
 ---
 
+## Scores (`airport_scores.csv`)
+
+Computed by `server/app/core/scoring.py` (`compute_scores`, `add_rank_sensitivity`) from `airport_metrics.csv`. Percentiles are within the airport's FAA hub group, so they are comparable only within a group (D17, D20).
+
+| Column | Meaning | Unit / format | Source & period | How computed | NaN meaning | Decisions |
+|--------|---------|---------------|-----------------|--------------|-------------|-----------|
+| `score_completeness` | Number of the 4 score components backed by real data | Integer 1–4 (354 airports have 4, 41 have 3, 6 have 2, 1 has 1) | Derived | Count of components whose percentile is not NaN before the neutral fill | Never NaN | D18 |
+| `growth_pct` | Growth component: percentile within hub group | Fraction (0–1] | Derived from `cagr_19_25`, `pct_change_24_25` | Each signal is ranked within the hub group, blended 70% CAGR / 30% 2024–25 change, and the blend is ranked again | Never NaN: 0.5 (neutral) when CAGR is missing | D5, D16, D17, D18 |
+| `seat_demand_pct` | Seat demand component: percentile of `load_factor` within hub group | Fraction (0–1] | Derived from `load_factor` | Percentile rank within hub group (ties share the average rank) | Never NaN: 0.5 (neutral) when `load_factor` is NaN | D16, D17, D18 |
+| `congestion_pct` | Congestion component: percentile of `nas_delay_rate` within hub group (higher = more congested) | Fraction (0–1] | Derived from `nas_delay_rate` | Percentile rank within hub group | Never NaN: 0.5 (neutral) when there is no delay data (unknown, not zero) | D12, D16, D17, D18 |
+| `scale_pct` | Scale component: percentile of `enpl_2025` within hub group | Fraction (0–1] | Derived from `enpl_2025` | Percentile rank within hub group | Never NaN | D16, D17 |
+| `investment_score` | Weighted score | Fraction 0–1 | Derived | 0.35 × `growth_pct` + 0.25 × `seat_demand_pct` + 0.25 × `congestion_pct` + 0.15 × `scale_pct` | Never NaN in the file; the tools return it only for ranked airports | D18, D19 |
+| `ranked` | Whether the airport has enough real data to be ranked | Boolean (395 `True`, 7 `False`) | Derived | `score_completeness >= 3` | Never NaN | D18 |
+| `rank_in_hub` | National rank within the hub group (1 = highest score) | Integer | Derived | Rank of `investment_score` among ranked airports in the hub group; tied airports share the better (lower-numbered) rank | NaN for the 7 unranked airports | D17, D20 |
+| `rank_overall` | Rank across all ranked airports, ignoring hub groups | Integer | Derived | Rank of `investment_score` among all ranked airports | NaN for unranked airports. Not used by the tools or the agent, because scores are not comparable across hub groups | D20 |
+| `hub_size_n` | Number of ranked airports in the hub group, for "9th of 30" | Integer (30 L, 35 M, 79 S, 251 N) | Derived | Count of `ranked` airports per hub | Never NaN | D20 |
+| `rank_range_sensitivity` | Range of `rank_in_hub` across the 8 weight scenarios | Text "min–max" (e.g., `8–10`) | Derived | Each weight moved by ±0.10, the others rescaled to keep the total at 1; the airport is re-ranked in each scenario | NaN for unranked airports | D19 |
+| `weight_sensitive` | Whether the rank depends strongly on the weights | Boolean (44 `True`, 351 `False`) | Derived | `True` when the range (max − min) is more than 20% of `hub_size_n` | NaN for unranked airports | D19 |
+
+---
+
+## Airport codes (`airport_codes.csv`)
+
+| Column | Meaning | Unit / format | Source & period | How computed | NaN meaning | Decisions |
+|--------|---------|---------------|-----------------|--------------|-------------|-----------|
+| `icao` | ICAO airport code, the identifier the OpenSky API expects | Text, 4 chars (e.g., `KBOS`, `PANC`, `TJSJ`) | OurAirports (`data/raw/airports.csv.gz`) | Match on `iata` (OurAirports `iata_code`), falling back to the FAA code (`local_code`); use `icao_code`, or `gps_code` when empty; closed airports excluded. Override: DJT → `KPBI`, the code OpenSky still uses for West Palm Beach | Never NaN (all 402 mapped) | D9, D22 |
+
+---
+
 ## Notes
 
 ### T-100 columns (departures-side, all carriers) vs. delay columns (arrivals-side, reporting carriers only)
@@ -103,4 +137,4 @@ Consequences:
 
 ### `load_factor` can be NaN even when `has_t100 = True`
 
-`load_factor` requires CLASS F (scheduled passenger) data. An airport served only by charter or all-cargo operations (CLASS L / G / P but not F) would have `has_t100 = True` but `load_factor = NaN`. Grand Canyon West (1G4) is a near-example: its T-100 traffic is mostly air-tour charter (CLASS L: 667 of 764 departures; only 97 CLASS F), so `passengers_FL` is far below its FAA enplanements and `data_confidence = "low"`.
+`load_factor` requires CLASS F (scheduled passenger) data. An airport served only by charter or all-cargo operations (CLASS L / G / P but not F) would have `has_t100 = True` but `load_factor = NaN`. Grand Canyon West (1G4) is a near-example: its T-100 traffic is mostly air-tour charter (CLASS L: 667 of 764 departures; only 97 CLASS F), so `passengers_FL` is far below its FAA enplanements and `data_confidence = "low"`. One airport has this today: Youngstown (YNG), whose 385 departures in T-100 are all CLASS L charter flights, so `load_factor` is NaN.
