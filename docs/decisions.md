@@ -344,7 +344,7 @@ A flag does not always indicate an extreme profile: an airport in a crowded midd
 
 **Results:** The suite was run four times, fixing bugs in the checks between runs: 10/13, 10/13, 10/13, then 13/13, with every number in the final run grounded in tool results. Every failure was read to decide whether the agent or the check was wrong: 4 were real agent errors (an invented threshold, an off-topic refusal that was too long, and the same rounding error twice), and 5 were bugs in the checks, which were fixed.
 
-**Final run:** 29 cases: the 4 assignment questions and follow-ups, known risks (cross-group comparison, ambiguous city, forecast, unranked airport, custom region and threshold), live-data failure handling (API down with and without cache, using test fixtures that patch the environment for one case only), and prompt injection (5 direct and 2 indirect attempts, plus 2 false-memory cases). Result: 29/29, every answer grounded. The runtime guardrail (D28) corrected numbers in 5 of 29 first drafts, mostly roundings (599.4 → "599", 602.9 → "603", 437,108 → "437,000"), and one mis-copied digit (SFO's 2024 enplanements 25,078,968 written as "24,078,968"). Without the guardrail, those 5 cases would have failed.
+**Final run:** 29 cases: the 4 assignment questions and follow-ups, known risks (cross-group comparison, ambiguous city, forecast, unranked airport, custom region and threshold), live-data failure handling (API down with and without cache, using test fixtures that patch the environment for one case only), and prompt injection (5 direct and 2 indirect attempts, plus 2 false-memory cases). Final run result: 28/29, every answer grounded, 4 guardrail retries. The one failure (bangor_vs_boston) was read: the answer was correct, but the comparability check did not recognize its wording ("can't be ranked against each other"). Across evaluation runs, the runtime guardrail (D28) corrected numbers in up to 5 of 29 first drafts per run, including rounded values (599.4 → "599", 602.9 → "603", 437,108 → "437,000") and a mis-copied digit (SFO's 2024 enplanements 25,078,968 written as "24,078,968"). Without the guardrail, those cases would have failed.
 
 **Testing the checks:** checks were also run against deliberately wrong answers, to confirm they fail when they should. This exposed one check that would have accepted an adopted false value; it was fixed.
 
@@ -366,9 +366,9 @@ A flag does not always indicate an extreme profile: an airport in a crowded midd
 - If the corrected answer is still ungrounded, it is returned anyway and the panel shows which numbers could not be verified, so the user sees the problem instead of a silently changed answer.
 - The check inherits the eval check's limits: it confirms that a number appears in the tool output, not that it is attached to the right airport or metric.
 
-**Observed in evaluation:** In the final 29-case run, the guardrail corrected 5 of 29 first drafts, including a rounded value ("599" for 599.4), and a number repeated from the previous answer without being fetched again ("+14.1%"). An earlier run caught a mis-copied digit ("437,109" for Bangor's 437,108 passengers), an error a reader would be unlikely to notice.
+**Observed in evaluation:** Across evaluation runs, the guardrail corrected numbers in up to 5 of 29 first drafts per run, including rounded values ("599" for 599.4), a number repeated from the previous answer without being fetched again ("+14.1%"), and mis-copied digits ("24,078,968" for SFO's 25,078,968; "437,109" for Bangor's 437,108), errors a reader would be unlikely to notice. In the final run, it corrected 4 of 29.
 
-## D29. Prompt injection: defended mainly by design, tested directly and indirectly
+### D29. Prompt injection: defended mainly by design, tested directly and indirectly
 **Decision:** Protection against prompt injection relies mainly on the system's design, with the system prompt as an additional layer:
 - **Scores are computed in code** and stored in the data. The model can describe them but cannot change them.
 - **The tools are read-only.** The agent cannot send messages, change files or take actions, so a successful injection could at most produce a misleading text answer.
@@ -387,12 +387,17 @@ In the final run, the agent resisted every attempt.
 - In the poisoned-tool case, the planted value appears in the tool output, so grounding cannot catch it; this case relies on text checks.
 - The text checks ignore sentences that reject a value ("I can't use 95%"), so that correct refusals are not flagged. As a tradeoff, a conditional sentence that does adopt a false value could pass. The checks were tested against deliberately wrong answers to limit this risk.
 
+### D30. "Why" questions are answered with the scoring logic
+**Decision:** For "why" questions, the agent explains the analytical reasoning from the data: which indicators drive the conclusion, how they compare to peers, and how the score uses them. Real-world causes (airline strategy, local economy, regulation) are outside the data and are mentioned in one sentence as a limitation.
+
+**Why:** An earlier rule against unsupported causal claims was over-applied: the agent answered "why" with "the tools can't say why", although the data clearly shows why an airport scores as it does. Explaining the scoring logic is the core of the analysis; speculating about external causes is not.
+
 ## Guardrails
 
 | Guardrail | Where it's enforced | How it's tested |
 |---|---|---|
 | Every number comes from a tool; display values copied exactly | Tools (display values) + system prompt | Grounding check on every eval answer |
-| Runtime grounding check with one correction retry (D28) | Agent loop (code) | Eval "Guardrail" column (the retry corrected 5 of 29 first drafts in the final run) |
+| Runtime grounding check with one correction retry (D28) | Agent loop (code) | Eval "Guardrail" column (across evaluation runs, the retry corrected up to 5 of 29 first drafts per run) |
 | No unsupported guesses or causal claims | System prompt | SFO case ("not measured directly"); forecast case |
 | Input validation: unknown airports, invalid thresholds | Tools (code) | Unknown airport case |
 | Ambiguous names: list candidates, state assumptions | Tools + system prompt | LA, Anchorage and Chicago cases |

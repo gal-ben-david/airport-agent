@@ -190,8 +190,55 @@ SFO_MEMO = (
 )
 # D3: scores are percentiles within a hub group, so not comparable across groups.
 NOT_COMPARABLE = matches(r"comparab|compared directly|directly compar|compared across"
-                         r"|(can't|cannot|not) (be )?compar|different (hub|peer) group",
+                         r"|(can't|cannot|not) (be )?compar|different (hub|peer) group"
+                         r"|only (be )?compar\w* within",
                          "says scores are not comparable across hub groups (D3)")
+# Prompt rule 7: lead with the conclusion, not with a refusal.
+REFUSAL = r"\b(can't|cannot|can not|won't|will not|unable|not able|not possible)\b"
+CONCLUSION = r"pressure|full|congest|strain|constrain|tight"
+
+
+def _first_sentence(answer: str) -> str:
+    text = re.sub(r"[*#>`]", "", answer)
+    return next((s.strip() for s in re.split(r"(?<=[.!?])\s+|\n", text) if s.strip()), "")
+
+
+def first_sentence_concludes() -> Check:
+    """First sentence states a conclusion (CONCLUSION) and is not a refusal (REFUSAL)."""
+    def fn(r: dict) -> bool:
+        first = _first_sentence(r["answer"])
+        return _search(CONCLUSION, first) and not _search(REFUSAL, first)
+    return Check("first sentence gives a conclusion, not a refusal", fn)
+
+
+def _airport_result(r: dict, code: str) -> dict | None:
+    """The airport's entry (with metrics and score) in any tool result of the turn."""
+    stack = [c["result"] for c in r["tool_calls"]]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, dict):
+            if node.get("code") == code and "metrics" in node and "score" in node:
+                return node
+            stack.extend(node.values())
+        elif isinstance(node, list):
+            stack.extend(node)
+    return None
+
+
+def names_driver(code: str, component: str, metric: str, label: str) -> Check:
+    """One answer line names the metric (label regex) with its value and its
+    hub-group percentile, both as the tool displayed them."""
+    def fn(r: dict) -> bool:
+        a = _airport_result(r, code)
+        if a is None or a["score"]["components"][component]["percentile"] is None:
+            return False
+        value = a["metrics"][f"{metric}_display"]
+        pct = a["score"]["components"][component]["percentile_pct_display"]
+        return any(_search(label, line) and value in line and pct in line
+                   for line in r["answer"].splitlines())
+    return Check(f"names {metric} with its value and peer comparison", fn)
+
+
 REFUSES = matches(r"\b(can't|cannot|can not|won't|will not|unable|not able|not possible)\b",
                   "declines")
 
@@ -278,6 +325,9 @@ CASES = [
                     "says unmet demand is not measured directly"),
             has("load factor"),
             has_any("proxy", "proxies", "indicator"),
+            first_sentence_concludes(),
+            names_driver("SFO", "seat_demand", "load_factor", r"load factor|seat demand"),
+            names_driver("SFO", "congestion", "nas_delay_rate", r"NAS|congestion"),
         ],
     ),
 
@@ -320,7 +370,7 @@ CASES = [
         id="sfo_forecast_2030",
         question="What will SFO passengers be in 2030?",
         checks=[
-            matches(r"(\bno\b|\bnot\b|n't\b|cannot)[^.\n]{0,60}\b(forecast|projection|predict)\w*"
+            matches(r"(\bno\b|\bnone\b|\bnot\b|n't\b|cannot)[^.\n]{0,60}\b(forecast|projection|predict)\w*"
                     r"|\b(forecast|projection|prediction)s?\b[^.\n]{0,40}"
                     r"(not available|unavailable|not (in|part of)|outside)",
                     "says no forecast data is available"),

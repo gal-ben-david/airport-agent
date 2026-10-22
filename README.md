@@ -60,7 +60,7 @@ cd server && pytest
 python -m evals.run_evals   # from server/
 ```
 
-Latest evaluation results: **[docs/eval-results.md](docs/eval-results.md)** (29/29 passed, every answer grounded).
+Latest evaluation results: **[docs/eval-results.md](docs/eval-results.md)** (final run: 28/29 passed, every answer grounded; the one failure is a phrase check missing a correct answer, see D27).
 
 Manual check scripts (print results for reading, not pass/fail):
 - `server/scripts/check_tools.py`: runs every tool on sample airports.
