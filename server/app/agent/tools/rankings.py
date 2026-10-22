@@ -1,5 +1,7 @@
 """Multi-airport tools: rank_airports, compare_airports."""
 
+import pandas as pd
+
 from .common import (
     DELAY_CAVEAT,
     HUB_LABELS,
@@ -179,15 +181,63 @@ def compare_airports(codes) -> dict:
 
     hubs = sorted({r["hub"] for r in rows}, key=HUB_ORDER.index)
     same_hub = len(hubs) == 1
-    note = None if same_hub else (
-        "These airports are in different FAA hub groups ("
-        + ", ".join(HUB_LABELS[h] for h in hubs)
-        + "). Scores are percentiles within each group, so they are not directly "
-        "comparable; compare raw metrics or each airport's rank within its own group (D20)."
-    )
+    profiles = [_profile(r) for r in rows]
+    if same_hub:
+        return _ok(units=UNITS, same_hub_group=True, note=None, airports=profiles)
+
+    # Different hub groups (D20): component percentiles go in a per-airport block, so
+    # they are not read side by side; the comparison between airports uses raw metrics.
+    for prof, row in zip(profiles, rows):
+        prof["score"]["components_within_own_hub_group"] = {
+            "label": "within its own hub group (not comparable across groups)",
+            "hub_group": f"{HUB_LABELS[row['hub']].lower()}s",
+            "components": prof["score"].pop("components"),
+        }
     return _ok(
         units=UNITS,
-        same_hub_group=same_hub,
-        note=note,
-        airports=[_profile(r) for r in rows],
+        same_hub_group=False,
+        note=(
+            "These airports are in different FAA hub groups ("
+            + ", ".join(HUB_LABELS[h] for h in hubs)
+            + "). Scores and component percentiles are within each group, so they are "
+            "not comparable across groups; compare the airports with fair_comparison, "
+            "computed from the raw metrics (D20)."
+        ),
+        fair_comparison=_fair_comparison(rows),
+        airports=profiles,
     )
+
+
+# Raw metrics behind the score components (D16), for comparing across hub groups.
+FAIR_METRICS = {
+    "enpl_2025": ("Enplanements 2025", "count"),
+    "cagr_19_25": ("CAGR 2019-2025", "pct_signed"),
+    "pct_change_24_25": ("Change 2024-2025", "pct_signed"),
+    "load_factor": ("Load factor", "pct"),
+    "nas_delay_rate": ("NAS delay rate", "pct"),
+}
+
+
+def _fair_comparison(rows) -> list[str]:
+    """One line per raw metric, e.g. "NAS delay rate: LAX 4.6% vs SNA 4.3% (LAX higher
+    by 0.3 points)". Differences are taken from the display values, so they match
+    the numbers shown; percentages differ in percentage points."""
+    lines = []
+    for col, (label, kind) in FAIR_METRICS.items():
+        parts = [f"{r['code']} {_fmt(r[col], kind) or 'n/a'}" for r in rows]
+        # The value as displayed: whole counts, or percent rounded to 0.1.
+        shown = {r["code"]: (round(float(r[col])) if kind == "count" else round(float(r[col]) * 100, 1))
+                 for r in rows if pd.notna(r[col])}
+        text = f"{label}: " + " vs ".join(parts)
+        if len(shown) == len(rows):
+            hi, lo = max(shown, key=shown.get), min(shown, key=shown.get)
+            if shown[hi] == shown[lo]:
+                text += " (equal as displayed)"
+            elif len(rows) == 2:
+                diff = shown[hi] - shown[lo]
+                diff_text = f"{diff:,}" if kind == "count" else f"{diff:.1f} points"
+                text += f" ({hi} higher by {diff_text})"
+            else:
+                text += f" (highest: {hi}; lowest: {lo})"
+        lines.append(text)
+    return lines

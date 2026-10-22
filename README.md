@@ -10,7 +10,7 @@ Ask questions in plain English, for example:
 
 The agent answers with numbers from public government data, explains its reasoning, and states its assumptions and uncertainty. **Every number in an answer comes from deterministic code, never from the language model**, and a runtime check verifies this on every answer.
 
-![Screenshot](docs/screenshot.png) <!-- TODO: add a screenshot of an answer with "Tools used" open -->
+![Screenshot](docs/app_screenshot.png)
 
 ---
 
@@ -70,7 +70,7 @@ cd server && pytest
 python -m evals.run_evals   # from server/
 ```
 
-Latest evaluation results: **[docs/eval-results.md](docs/eval-results.md)** (final run: 29/29 passed, every answer grounded).
+Latest evaluation results: **[docs/eval-results.md](docs/eval-results.md)** (three final runs: 26/29, 28/29 and 29/29, every answer grounded; the failures were phrasing rules, see [design.md §7](docs/design.md#7-evaluation)).
 
 Manual check scripts (print results for reading, not pass/fail):
 - `server/scripts/check_tools.py`: runs every tool on sample airports.

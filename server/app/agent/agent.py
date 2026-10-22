@@ -134,9 +134,11 @@ TOOL_SCHEMAS = [
     {
         "name": "compare_airports",
         "description": (
-            "Side-by-side profiles of 2-5 airports (same fields as get_airport_profile). "
-            "Use when the user compares airports. The result says whether they are in the "
-            "same hub group; scores of different groups are not comparable."
+            "Profiles of 2-5 airports (same fields as get_airport_profile). Use when the "
+            "user compares airports. The result says whether they are in the same hub group. "
+            "If not, each airport's component percentiles are in its own block (within its "
+            "hub group, not comparable across groups), and fair_comparison compares the "
+            "airports on raw metrics, with the differences computed."
         ),
         "input_schema": {
             "type": "object",

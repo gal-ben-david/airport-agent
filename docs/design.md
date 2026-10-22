@@ -158,7 +158,7 @@ The guiding rule: **code computes, the language model explains.**
 **Agent evaluation** (29 cases, D27): the four assignment questions and follow-ups, known risks (cross-group comparison, ambiguous city, forecast, unranked airport, custom region and threshold), live-data failures (API down, with and without cache), and prompt injection. Each case checks the tools called and the answer text; a grounding check verifies every number.
 
 - **No LLM judge:** checks are deterministic, so the same answer always gets the same verdict, and each failure points to one rule.
-- **Final run: 29/29**, every answer grounded, 2 guardrail retries.
+- **Final runs:** three full runs with the final prompt: 26/29, 28/29 and 29/29 (the third after compare_airports began computing cross-group comparisons in code). In all three runs, every answer was grounded in tool results, and every factual, safety and prompt-injection check passed. The failures were phrasing rules the model occasionally breaks: a regional superlative without its hub group (D20, once), and the SFO answer placing its caveat in a sentence before the conclusion (D30, in the first two runs). In the first run, one more case failed because a check missed a correct wording (the unranked YNG answer); the check was widened. The model's wording is not deterministic, so these vary between runs. This is the main limit of prompt-based rules: the evals detect such slips, but only code-enforced guardrails, such as the grounding check, apply on every answer.
 - Across evaluation runs, the guardrail corrected numbers in up to 5 of 29 first drafts per run, including rounded values (599.4 → "599") and a mis-copied digit (25,078,968 written as "24,078,968"), an error a reader would be unlikely to notice.
 - **Checks were tested against deliberately wrong answers**, to confirm they fail when they should.
 - **Limitation:** many checks look for specific words, so a correct answer worded differently can fail. Every failure is read before changing the agent.
@@ -227,6 +227,7 @@ The guiding rule: **code computes, the language model explains.**
 - **Explanation quality:** an LLM-as-judge rubric, as a complement to the deterministic checks.
 - **Consistency:** run the eval suite several times and report the pass rate per case.
 - **Passenger satisfaction:** if a broadly licensed source exists, combine it with the score: high demand pressure plus poor terminal satisfaction suggests the largest renovation upside.
+- **Voice:** add voice input and output, e.g., browser speech-to-text for questions and text-to-speech for answers. The agent is UI-independent (D26), so this would only change the interface layer.
 
 ---
 
@@ -235,6 +236,6 @@ The guiding rule: **code computes, the language model explains.**
 Short summaries of the agent's answers (2025 data; full answers in [eval-results.md](eval-results.md)):
 
 - **New England candidates:** grouped by hub size. Large: Boston, 9th of 30 (high congestion, flat growth). Medium: Bradley, 15th of 35 (very full flights). Small: Portland, ME, 25th of 79 (balanced growth and full flights); New Haven has the fastest growth of all small hubs but no delay data and a weight-sensitive rank (23rd–42nd). Nonhub: Bangor, 6th of 251.
-- **LA vs. Santa Ana congestion:** "LA" is taken as LAX (stated as an assumption). NAS delay rates are close: 4.6% at LAX vs. 4.3% at SNA. They are in different hub groups, so only raw rates are compared.
+- **LA vs. Santa Ana congestion:** "LA" is taken as LAX (stated as an assumption). NAS delay rates are close: 4.6% at LAX vs. 4.3% at SNA (LAX higher by 0.3 points). Neither is highly congested within its own hub group. They are in different hub groups, so only raw rates are compared.
 - **Anchorage long-haul share:** 2.8% of scheduled passenger departures (3,000+ miles), 6.2% of passengers, and 31.1% of all departures including cargo. The answer is sensitive to the threshold.
 - **SFO unmet demand:** unmet demand isn't measured directly, but the indicators point to strong demand pressure. The drivers: flights fuller than 90.0% of large hubs (load factor 82.3%) and more congested than 86.7% of them (NAS delay rate 9.9%). What holds the score back is growth: passengers are still below 2019 (CAGR −0.9%), though recovering (+4.7% in 2025). SFO ranks 7th of 30 large hubs (stable at 6th–8th).

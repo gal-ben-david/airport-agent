@@ -80,3 +80,23 @@ def test_anc_d15_sensitivity(miles, expected):
 # ANC incl. cargo at 3,000 mi (D15: 31.1%)
 def test_anc_including_cargo_d15():
     assert tools.long_haul_share("ANC", include_cargo=True)["long_haul_share_display"] == "31.1%"
+
+
+# Different hub groups (D20): components in a per-airport block, raw-metric comparison in code
+def test_compare_mixed_hubs_fair_comparison():
+    result = tools.compare_airports(["LAX", "SNA"])
+    assert result["same_hub_group"] is False
+    assert "NAS delay rate: LAX 4.6% vs SNA 4.3% (LAX higher by 0.3 points)" in result["fair_comparison"]
+    for airport in result["airports"]:
+        assert "components" not in airport["score"]
+        block = airport["score"]["components_within_own_hub_group"]
+        assert block["label"] == "within its own hub group (not comparable across groups)"
+        assert set(block["components"]) == {"growth", "seat_demand", "congestion", "scale"}
+
+
+# Same hub group: components stay side by side, no fair_comparison
+def test_compare_same_hub_unchanged():
+    result = tools.compare_airports(["SFO", "LAX"])
+    assert result["same_hub_group"] is True
+    assert "fair_comparison" not in result
+    assert all("components" in a["score"] for a in result["airports"])

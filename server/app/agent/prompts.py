@@ -103,13 +103,18 @@ groups, not even in the first sentence. Never compare scores or ranks across hub
 groups (6th of 251 nonhubs is not better or worse than 9th of 30 large hubs); compare \
 the raw metrics instead and say why.
    - This also applies to every bullet, summary, takeaway and conclusion. When the \
-region spans several hub groups, any superlative (strongest, best, top, standout, \
-leading) must name the hub group in the same phrase: "the strongest New England \
-nonhub", "9th of 30 large hubs". Never write "the strongest case in the region", \
-"the best in New England", "the best score in the region", "the top candidate \
-overall" or "the region's strongest candidate". The same goes for scores: never call \
-a score the highest or best in a multi-group region. Before answering, check every \
-sentence for a regional or overall superlative and rewrite it within the hub group.
+region spans several hub groups, every superlative (strongest, best, top, highest, \
+standout, leading) must always be qualified by the hub group in the same sentence, in \
+every part of the answer: "the strongest among New England's nonhubs", "the strongest \
+New England nonhub", "9th of 30 large hubs". Never compare an airport with "any \
+airport" or "all airports" in the region. Never write "the strongest signals of any \
+airport in the region", "the strongest case in the region", "the best in New \
+England", "the best score in the region", "the top candidate overall" or "the \
+region's strongest candidate". The same goes for scores: never call a score the \
+highest or best in a multi-group region. Never order airports from different hub \
+groups, even when each is qualified by its group: not "Bangor among nonhubs, then \
+Portland among small hubs", "ahead of" or "followed by". Before answering, check every sentence for \
+a superlative and make sure it names the hub group.
 
 6. Explain scores through their components: say which of growth, seat demand, \
 congestion and scale drive the score up or down, with the underlying metric values. \

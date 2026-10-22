@@ -149,27 +149,64 @@ def max_words(n: int) -> Check:
 
 
 # D20 / prompt rule 5: a superlative in a multi-hub-group answer must name its hub
-# group. Flags e.g. "strongest in the region", "best overall", "the region's top
-# candidate", unless the same phrase names a hub group ("strongest nonhub in New England").
+# group. Checked per sentence: a sentence fails if it has a superlative and a regional
+# or overall scope ("of any airport", "in the region", "in New England", "the region's",
+# "best overall") and does not name a hub group ("among New England's nonhubs").
 # "top 5" is a list size, not a superlative ("Small hubs (top 5 in New England)").
 SUPERLATIVE = r"\b(strongest|best|top(?!\s+\d)|highest|highest[- ]ranked|leading|standout)\b"
-REGIONAL_SUPERLATIVES = [
-    SUPERLATIVE + r"[^.\n|]{0,40}?\b(in (the )?region|in new england|(on|in) the west coast"
-                  r"|overall|across (the )?region)\b",
-    r"\b(region'?s|new england'?s|west coast'?s)\s+(single\s+)?" + SUPERLATIVE,
-]
+REGIONAL_SCOPE = (r"\b(of (any|all)( \w+){0,2} airports?|in (the )?region|in new england"
+                  r"|(on|in) the west coast|across (the )?region|region'?s|new england'?s"
+                  r"|west coast'?s)\b|" + SUPERLATIVE + r"\s+overall\b")
+
+
+def _sentences(answer: str) -> list[str]:
+    # Split on sentence ends, line breaks and table cells; "4.5%" stays whole.
+    return [s.strip() for s in re.split(r"(?<=[.!?])\s+|\n|\|", answer) if s.strip()]
+
+
+# Also flags ordering across groups, even when each airport names its group:
+# "Bangor among nonhubs, then Portland among small hubs".
+HUB_GROUP = r"\b(large|medium|small)[- ]hubs?\b|\bnon-?hubs?\b"
+ORDERING = r"\b(then|followed by|ahead of|after)\b"
+
+
+def _orders_hub_groups(sentence: str) -> bool:
+    groups = {m.group(1) or "non" for m in re.finditer(HUB_GROUP, sentence, re.IGNORECASE)}
+    return len({g.lower() for g in groups}) >= 2 and bool(re.search(ORDERING, sentence, re.IGNORECASE))
 
 
 def offending_superlatives(answer: str) -> list[str]:
-    """Regional/overall superlative phrases that don't name a hub group."""
-    return [m.group(0)
-            for pattern in REGIONAL_SUPERLATIVES
-            for m in re.finditer(pattern, answer, re.IGNORECASE)
-            if "hub" not in m.group(0).lower()]
+    """Sentences with a regional/overall superlative that don't name a hub group,
+    or that order airports from different hub groups."""
+    return [s for s in _sentences(answer)
+            if (re.search(SUPERLATIVE, s, re.IGNORECASE)
+                and re.search(REGIONAL_SCOPE, s, re.IGNORECASE)
+                and "hub" not in s.lower())
+            or _orders_hub_groups(s)]
 
 
 def no_cross_group_superlatives() -> Check:
     return Check("no cross-group superlatives (D20)", lambda r: not offending_superlatives(r["answer"]))
+
+
+# D20: component percentiles of airports in different hub groups are not compared.
+# Flags "SNA's congestion component is higher than LAX's" (also "... higher within its
+# hub group than LAX's is within its own"); listing each airport's own percentile passes.
+_COMPARATIVE = r"\b(higher|lower|stronger|weaker|above|below|better|worse|more|less)\b"
+
+
+def compares_component_percentiles(answer: str, a: str, b: str) -> list[str]:
+    """Sentences that put one airport's component percentile above or below another's."""
+    pattern = (rf"\b({a}|{b})'s\b[^.\n|]{{0,60}}\b(component|percentile)s?\b[^.\n|]{{0,60}}"
+               rf"{_COMPARATIVE}[^.\n|]{{0,60}}\bthan\s+(that of\s+)?({a}|{b})\b")
+    return [s for s in _sentences(answer)
+            for m in [re.search(pattern, s, re.IGNORECASE)]
+            if m and m.group(1).upper() != m.group(5).upper()]
+
+
+def no_component_percentile_comparison(a: str, b: str) -> Check:
+    return Check("does not compare component percentiles across hub groups (D20)",
+                 lambda r: not compares_component_percentiles(r["answer"], a, b))
 
 
 GROUPED_BY_HUB = has("large hub", "medium hub", "small hub", "nonhub")
@@ -230,10 +267,15 @@ def names_driver(code: str, component: str, metric: str, label: str) -> Check:
     hub-group percentile, both as the tool displayed them."""
     def fn(r: dict) -> bool:
         a = _airport_result(r, code)
-        if a is None or a["score"]["components"][component]["percentile"] is None:
+        if a is None:
+            return False
+        # compare_airports nests components per airport when hub groups differ (D20).
+        score = a["score"]
+        comps = score.get("components") or score["components_within_own_hub_group"]["components"]
+        if comps[component]["percentile"] is None:
             return False
         value = a["metrics"][f"{metric}_display"]
-        pct = a["score"]["components"][component]["percentile_pct_display"]
+        pct = comps[component]["percentile_pct_display"]
         return any(_search(label, line) and value in line and pct in line
                    for line in r["answer"].splitlines())
     return Check(f"names {metric} with its value and peer comparison", fn)
@@ -302,6 +344,7 @@ CASES = [
                     "states the LA -> LAX assumption"),
             has("NAS"),
             has("large hub", "medium hub"),
+            no_component_percentile_comparison("LAX", "SNA"),
         ],
     ),
     Case(
@@ -363,7 +406,8 @@ CASES = [
         question="How does YNG score?",
         expected_tools=[("get_airport_profile", "find_airport")],
         checks=[
-            matches(r"not ranked|unranked|isn't ranked|insufficient data|not enough (real )?data",
+            matches(r"not ranked|unranked|isn't ranked|insufficient data|not enough (real )?data"
+                    r"|no (investment )?score|needs? at least 3 of 4",
                     "says it isn't ranked / insufficient data (D18)"),
             not_matches(r"\b0\.\d{3}\b", "no investment score"),
         ],
@@ -485,8 +529,8 @@ CASES = [
             no_prompt_leak(
                 "You answer from a fixed dataset through the tools provided",
                 "Never round, convert, subtract or otherwise compute numbers yourself",
-                "Before answering, check every sentence for a regional or overall "
-                "superlative and rewrite it within the hub group.",
+                "Before answering, check every sentence for a superlative and make "
+                "sure it names the hub group.",
             ),
         ],
     ),
