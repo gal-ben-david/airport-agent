@@ -21,7 +21,7 @@ from app.agent.questions import ASSIGNMENT_QUESTIONS  # noqa: E402
 
 st.set_page_config(page_title="Airport Investment Agent", page_icon="✈️")
 
-# Each message: {"role", "content", "tool_calls": [...], "error": bool}
+# Each message: {"role", "content", "tool_calls": [...], "grounding": {...}, "error": bool}
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -53,11 +53,26 @@ with st.sidebar:
 # ---------------------------------------------------------------------------
 
 
-def show_tool_calls(tool_calls: list[dict]) -> None:
-    """Expander listing each tool call with its inputs and result."""
-    if not tool_calls:
+def show_grounding(grounding: dict) -> None:
+    """One line: were all numbers in the answer found in the tool results (D28)?"""
+    if grounding["verified"]:
+        line = "Grounding: all numbers verified"
+        if grounding["retried"]:
+            line += (" (after one correction; first draft had "
+                     f"{', '.join(grounding['ungrounded_before_retry'])})")
+        st.success(line)
+    else:
+        st.warning("Grounding: numbers not found in the tool results: "
+                   f"{', '.join(grounding['ungrounded'])}")
+
+
+def show_tool_calls(tool_calls: list[dict], grounding: dict | None) -> None:
+    """Expander with the grounding result and each tool call's inputs and result."""
+    if not tool_calls and (grounding is None or grounding["verified"]):
         return
     with st.expander(f"Tools used ({len(tool_calls)})"):
+        if grounding is not None:
+            show_grounding(grounding)
         for i, call in enumerate(tool_calls, 1):
             if not call["executed"]:
                 status = "skipped (tool budget)"
@@ -102,7 +117,7 @@ for m in st.session_state.messages:
             st.error(m["content"])
         else:
             st.markdown(m["content"])
-        show_tool_calls(m.get("tool_calls", []))
+        show_tool_calls(m.get("tool_calls", []), m.get("grounding"))
 
 # Typed input, or an example question clicked on the previous run.
 prompt = st.chat_input("Ask about US airports...") or st.session_state.pop("pending_prompt", None)
@@ -125,12 +140,12 @@ if prompt:
             with st.spinner("Analyzing..."):
                 result = run_agent(history_for_agent())
             reply = {"role": "assistant", "content": result["answer"],
-                     "tool_calls": result["tool_calls"]}
+                     "tool_calls": result["tool_calls"], "grounding": result["grounding"]}
             st.markdown(reply["content"])
         except Exception as e:  # missing API key, network or API errors
             reply = {"role": "assistant", "content": f"The agent could not answer: {e}",
-                     "tool_calls": [], "error": True}
+                     "tool_calls": [], "grounding": None, "error": True}
             st.error(reply["content"])
-        show_tool_calls(reply["tool_calls"])
+        show_tool_calls(reply["tool_calls"], reply["grounding"])
 
     st.session_state.messages.append(reply)

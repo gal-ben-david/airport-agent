@@ -337,7 +337,9 @@ A flag does not always indicate an extreme profile: an airport in a crowded midd
 **Licensing note:** OpenSky's free access is intended for research and non-commercial use; a commercial deployment would require a license.
 
 ### D25. Out-of-scope requests: short decline, no tools
-**Decision:** For requests unrelated to airport investment analysis (e.g., "write me a poem"), the agent declines in one or two sentences, says what it can help with, and stops. It calls no tools and does not revisit earlier answers.
+**Decision:** For requests unrelated to airport investment analysis (e.g., "write me a poem"), the agent answers in exactly two sentences: one declining, one offering help with airport investment analysis, with no list of capabilities. It calls no tools and does not revisit earlier answers.
+
+**How found:** The first version ("one or two sentences, say what you can help with") produced a sentence followed by a bullet list of capabilities (~75 words) in 2 of 5 eval runs. After the rule was made explicit, 3 of 3 runs gave two sentences (29–34 words).
 
 **Why:** An off-topic request should cost almost nothing and should not reopen earlier answers. Tool calls or a recap of the previous analysis add tokens and latency, and can look like the agent is making things up.
 
@@ -353,6 +355,31 @@ A flag does not always indicate an extreme profile: an airport in a crowded midd
 - Streamlit gives a working chat quickly, which kept the focus on data, scoring, evaluation and guardrails.
 - Because the agent is UI-independent (D24), a FastAPI endpoint and a React client could replace Streamlit without changing the agent.
 
+## D27. Evaluation: deterministic checks, no LLM judge
+**Decision:** An evaluation suite (server/evals/) runs 13 cases through the agent: the four assignment questions and the Bradley follow-up, plus cases for airport resolution, live data, the decisions above (D20, D22, D25, flags) and guardrails (off-topic, prompt injection, financial advice, unknown airport). Each case checks the tools called and the answer text with string and regex checks. A grounding check runs on every answer: each number must appear in that conversation's tool inputs or results. Years, ranks, numbers from the question and methodology constants from the system prompt are exempt. Results are saved to docs/eval-results.md.
+
+**Why:**
+- Deterministic checks give the same verdict for the same answer, and each failure points to one rule.
+- An LLM judge would add its own variability and cost, and could miss exactly the errors that matter most here (a rounded or invented number).
+
+**Results:** The suite was run four times, fixing bugs in the checks between runs: 10/13, 10/13, 10/13, then 13/13, with every number in the final run grounded in tool results. Every failure was read to decide whether the agent or the check was wrong: 4 were real agent errors (an invented threshold, an off-topic refusal that was too long, and the same rounding error twice), and 5 were bugs in the checks, which were fixed.
+
+**Limitations:**
+- Phrase checks can miss a correct answer worded differently, or pass a wrong one, so every failure is read before the agent is changed.
+- Agent answers vary between runs, so one run is a sample, not a guarantee. The earlier runs caught real errors: a rounded number ("about 599" for 599.4), an invented threshold ("at least 75% of its hub group"), and an off-topic refusal longer than D25 allows.
+
+## D28. Runtime grounding guardrail with one correction retry
+**Decision:** After the model's final answer, run_agent runs the same grounding check as the evals (server/app/agent/grounding.py) against the tool calls of the current turn. If any number is ungrounded, the model receives one correction message listing those numbers and asking it to use only tool values; the corrected answer is returned. At most one retry. The result (`verified`, `ungrounded`, `retried`, `ungrounded_before_retry`) is returned with the answer and shown in the Streamlit "Tools used" panel.
+
+**Why:**
+- The evals found rounded and invented numbers that the prompt rules alone did not prevent. A check in code catches them on every answer, not only in an eval run.
+- The correction keeps the agent loop running, so the model can also call a tool to fetch a missing number (within the D24 tool budget).
+- The check uses only the current turn's tool results, consistent with D24: follow-ups re-fetch their numbers rather than quoting earlier answers.
+
+**Tradeoffs:**
+- A retry adds one model call (a few seconds) to an affected answer.
+- If the corrected answer is still ungrounded, it is returned anyway and the panel shows which numbers could not be verified, so the user sees the problem instead of a silently changed answer.
+- The check inherits the eval check's limits: it confirms that a number appears in the tool output, not that it is attached to the right airport or metric.
 
 ## References
 - [FAA – Airport Categories](https://www.faa.gov/airports/planning_capacity/categories)

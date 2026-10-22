@@ -4,6 +4,8 @@ The airport investment agent: Claude with native tool use over the data tools.
 run_agent(messages) takes the chat history and returns the answer plus every tool
 call made for the latest user message. The LLM decides which tools to call and
 writes the answer; all numbers come from the deterministic tools (CLAUDE.md).
+A grounding guardrail checks every number in the final answer against the tool
+results and asks the model for one correction if any is missing (D28).
 """
 
 import json
@@ -14,6 +16,7 @@ from dotenv import load_dotenv
 
 from app.core.scoring import REPO_ROOT
 
+from .grounding import ungrounded_numbers
 from .prompts import SYSTEM_PROMPT
 from .tools import TOOLS
 
@@ -37,6 +40,14 @@ TRUNCATED_NOTE = "\n\n[The answer was cut off because it reached the length limi
 BUDGET_ERROR = (
     f"Tool budget reached ({MAX_TOOL_CALLS} calls per question). Answer with the "
     "results you already have, and say what you could not check."
+)
+# Sent once when the final answer has numbers not found in this turn's tool results (D28).
+GROUNDING_CORRECTION = (
+    "Your answer contains numbers that do not appear in the tool results for this "
+    "question: {numbers}. Rewrite the complete answer using only values from the tool "
+    "results, quoting the *_display values exactly as given. For each listed number, "
+    "replace it with the exact tool value, call a tool to get it, or remove it. Do not "
+    "round, convert or compute numbers. Do not mention this correction."
 )
 
 # ---------------------------------------------------------------------------
@@ -231,14 +242,34 @@ def run_agent(messages: list[dict]) -> dict:
 
     messages: [{"role": "user" | "assistant", "content": str}, ...], ending with
               the user message to answer.
-    Returns {"answer": str, "tool_calls": [{"name", "input", "result", "is_error",
-             "executed"}, ...]} for the latest user message.
+    Returns {"answer": str,
+             "tool_calls": [{"name", "input", "result", "is_error", "executed"}, ...],
+             "grounding": {"verified", "ungrounded", "retried", "ungrounded_before_retry"}}
+    for the latest user message.
     """
     client = _get_client()
     # Earlier turns are passed as text only; follow-ups re-fetch numbers via tools.
     convo = [{"role": m["role"], "content": m["content"]} for m in messages]
+    questions = [m["content"] for m in messages
+                 if m["role"] == "user" and isinstance(m["content"], str)]
     tool_calls: list[dict] = []
     executed = 0
+    first_ungrounded: list[str] | None = None  # set when the correction retry was used
+
+    def finish(answer: str) -> dict:
+        # Grounded against this turn's tool calls only: earlier tool results are
+        # not carried forward (D24), so follow-ups must re-fetch their numbers.
+        ungrounded = ungrounded_numbers(answer, tool_calls, questions)
+        return {
+            "answer": answer,
+            "tool_calls": tool_calls,
+            "grounding": {
+                "verified": not ungrounded,
+                "ungrounded": ungrounded,
+                "retried": first_ungrounded is not None,
+                "ungrounded_before_retry": first_ungrounded or [],
+            },
+        }
 
     while True:
         budget_reached = executed >= MAX_TOOL_CALLS
@@ -254,13 +285,22 @@ def run_agent(messages: list[dict]) -> dict:
         )
 
         if response.stop_reason == "refusal":
-            return {"answer": REFUSAL_ANSWER, "tool_calls": tool_calls}
+            return finish(REFUSAL_ANSWER)
 
         if response.stop_reason != "tool_use":
             answer = "".join(b.text for b in response.content if b.type == "text").strip()
             if response.stop_reason == "max_tokens":
                 answer += TRUNCATED_NOTE
-            return {"answer": answer, "tool_calls": tool_calls}
+            ungrounded = ungrounded_numbers(answer, tool_calls, questions)
+            if not ungrounded or first_ungrounded is not None:
+                return finish(answer)
+            # One correction retry. The loop continues, so the model can also call a
+            # tool for a missing number (within the tool budget).
+            first_ungrounded = ungrounded
+            convo.append({"role": "assistant", "content": response.content})
+            convo.append({"role": "user",
+                          "content": GROUNDING_CORRECTION.format(numbers=", ".join(ungrounded))})
+            continue
 
         # Keep the full assistant turn (thinking and tool_use blocks) unchanged.
         convo.append({"role": "assistant", "content": response.content})
