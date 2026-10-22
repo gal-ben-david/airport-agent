@@ -82,6 +82,8 @@ The agent is a proof of concept: analysts ask questions in plain English, and ge
 
 Growth uses 2019 as the baseline, the last year before COVID, so recovery is not mistaken for new demand (D5).
 
+**How growth is computed:** CAGR and the 2024–25 momentum are each ranked within the hub group, combined 70/30, and the blend is ranked again so it is on the same percentile scale as the other components.
+
 **Context only, not scored:** long-haul share (describes the network, not capacity pressure), cargo share (cargo doesn't use passenger terminals), overall delay and cancellation rates (mixed causes, often airline-driven), and live OpenSky traffic.
 
 ### How the score is computed
@@ -108,10 +110,10 @@ The guiding rule: **code computes, the language model explains.**
 
 | Task | Done by | Why |
 |---|---|---|
-| Cleaning, joining and validating data | Code (offline) | Must be correct and reproducible |
+| Cleaning, joining and validating data | Code, ahead of time (data pipeline, build_data.py) | Must be correct and reproducible |
 | Computing metrics and scores | Code | Deterministic: same input, same output |
 | Looking up, ranking, comparing airports | Code (tools) | Every number traceable to data |
-| Formatting numbers ("82.3%") | Code (display values) | The model rounded numbers incorrectly when it formatted them itself |
+| Formatting numbers ("82.3%") | Code: tools return ready-formatted values, which the model copies | The model rounded numbers incorrectly when it formatted them itself |
 | Checking every number in the answer | Code (grounding check) | Catches errors the prompt alone didn't prevent |
 | Understanding the question | **LLM** | Natural language: "LA", "New England", follow-ups |
 | Choosing which tools to call | **LLM** | Plans the steps for each question |
@@ -120,7 +122,7 @@ The guiding rule: **code computes, the language model explains.**
 
 **Model:** Claude (claude-sonnet-5-5) with native tool use. The agent loop allows at most 6 tool calls per question; tool errors are returned to the model so it can explain them (D24).
 
-**AI during development:** AI coding assistants were used to write code. All decisions were made and documented by the author, and the outputs were verified against the data. Several AI-generated claims were caught this way: a conclusion that a 30–50% gap between two data sources was not a data problem, when it actually meant the file was domestic-only (D10), an explanation of missing airports that turned out to be code mismatches, and a code change that broke an airport that previously worked (detected with a regression check).
+**AI during development:** AI assistants were used in two roles: as a thinking partner (discussing approaches, explaining concepts, challenging decisions and reviewing results) and as a coding assistant (writing code from specified requirements). The decisions were made and documented by the author, and every output was verified against the data rather than trusted. Several AI-generated claims were caught this way: a conclusion that a 30–50% gap between two data sources was not a data problem, when it actually meant the file was domestic-only (D10); an explanation of missing airports that turned out to be code mismatches (D9); and a code change that broke an airport that previously worked, detected with a regression check.
 
 ---
 

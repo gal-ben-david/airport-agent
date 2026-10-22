@@ -83,8 +83,10 @@ def compute_scores(df: pd.DataFrame, weights: dict = WEIGHTS) -> pd.DataFrame:
 
     # --- Growth: rank each signal within hub, blend, then rank the blend again.
     # Re-ranking puts growth back on the same 0-1 percentile scale as the others.
-    # An airport without 2019 history has no CAGR, so its growth is treated as
-    # missing (D5: "insufficient history", not scored on momentum alone).
+    # If either signal is missing, the blend is NaN and growth is treated as
+    # missing. In practice only CAGR is missing (no 2019 history, D5:
+    # "insufficient history", not scored on momentum alone); momentum is
+    # present for all 402 airports.
     cagr_pct = pct_rank_in_hub(out, out["cagr_19_25"])
     momentum_pct = pct_rank_in_hub(out, out["pct_change_24_25"])
     growth_blend = GROWTH_MIX["cagr"] * cagr_pct + GROWTH_MIX["momentum"] * momentum_pct

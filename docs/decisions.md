@@ -27,7 +27,7 @@
 - Precomputed metrics make the scoring fast, reproducible and deterministic.
 - At this size (402 airports), in-memory tables are faster and simpler than a database server.
 
-**Delivery:** The repository includes the raw source files (compressed), the processed tables, and the notebooks where the logic was developed. The processed tables are rebuilt from the raw files by `server/scripts/build_data.py`, which verifies the result matches the committed files.
+**Delivery:** The repository includes the raw source files (compressed), the processed tables, and the notebooks where the logic was developed. The processed tables are rebuilt from the raw files by `server/scripts/build_data.py`, which verifies the result matches the committed files. Raw CSV files are stored compressed (.csv.gz) to keep the repository small; pandas reads them directly, so build_data.py works without decompression.
 
 **Path to production:** Move the processed tables to a database (e.g., PostgreSQL) loaded by a scheduled ETL job, which supports more data, concurrent access and versioned refreshes.
 
@@ -208,6 +208,8 @@ Hub size thresholds are statutory (49 USC 47102), as published by the FAA. Hub c
 | Seat demand | Load factor (CLASS F) | How full flights are relative to seats offered |
 | System congestion | NAS delay rate | How strained the airport and airspace system is |
 | Scale | Enplanements 2025 | Size of the passenger base; mostly a tie-breaker within a hub group |
+
+**Growth computation:** CAGR and the 2024–25 momentum are each ranked within the hub group, combined 70/30, and the blend is ranked again so it is on the same percentile scale as the other components.
 
 **Context only (reported by the agent, not scored):**
 - Long-haul share: describes the network type, not capacity pressure. Including it would systematically favor international gateways. *Possible extension:* long-haul passengers may bring higher revenue per passenger (retail, larger facilities), which could matter for a revenue-focused investor.
