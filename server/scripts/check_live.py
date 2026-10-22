@@ -5,7 +5,7 @@ stale-cache fallback, unavailable message and unknown code.
 Uses real API credits (~240 per airport for a fresh 7-day window).
 
 Run from the repo root:
-    python server/scripts/test_live.py
+    python server/scripts/check_live.py
 """
 
 import json
@@ -14,7 +14,7 @@ import sys
 import time
 from pathlib import Path
 
-# Make `app` importable: this file is <repo>/server/scripts/test_live.py.
+# Make `app` importable: this file is <repo>/server/scripts/check_live.py.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.agent.tools import get_recent_traffic  # noqa: E402
