@@ -66,7 +66,7 @@ The client invests in terminal expansion driven by passenger and flight growth. 
 
 **Possible extension:** 2026 year-to-date data could serve as a "recent trend" signal, compared only against the same months of 2025.
 
-## D23. Primary government data, not published airport rankings
+### D23. Primary government data, not published airport rankings
 **Decision:** The analysis uses primary government data (FAA, BTS) rather than published airport rankings (J.D. Power, Wall Street Journal, The Points Guy, Skytrax, ACI).
 
 **Why:**
@@ -225,7 +225,7 @@ Hub size thresholds are statutory (49 USC 47102), as published by the FAA. Hub c
 
 **Why:** Regional subsets are too small for fair peer comparison. For example, Boston is the only Large hub in New England. Scoring nationally means each airport is compared to its true national peers, so a "strong candidate" means strong by national standards, not just the best of a small local group.
 
-## D16. Score components: demand growth meets capacity limits
+### D16. Score components: demand growth meets capacity limits
 **Investment thesis:** Terminal renovation is most profitable where passenger demand is growing and the airport is already under pressure.
 
 **Components (all oriented so that higher = stronger investment case):**
@@ -241,7 +241,7 @@ Hub size thresholds are statutory (49 USC 47102), as published by the FAA. Hub c
 - Cargo share: cargo flights do not use passenger terminals (D14). This is a scope assumption; it would change if the client invested in cargo facilities.
 - Overall delay rate and cancellation rate: mixed causes, often airline-driven (D12).
 
-## D17. Normalization: percentile rank within hub group
+### D17. Normalization: percentile rank within hub group
 **Decision:** Each component is converted to a percentile rank (0–1) within the airport's FAA hub group (D3), computed nationally (D6).
 
 **Why:**
@@ -251,7 +251,7 @@ Hub size thresholds are statutory (49 USC 47102), as published by the FAA. Hub c
 
 **Tradeoff:** Percentiles keep the order but lose magnitude: a small lead and a large lead can produce similar percentiles.
 
-## D18. Missing data: neutral value plus completeness flag
+### D18. Missing data: neutral value plus completeness flag
 **Decision:** A missing component (e.g., no delay data, no 2019 history) receives the neutral value 0.5, the peer-group median. A column `score_completeness` records how many of the four components used real data.
 
 **Why:**
@@ -263,7 +263,7 @@ Hub size thresholds are statutory (49 USC 47102), as published by the FAA. Hub c
 
 **Minimum completeness:** An airport is ranked only if at least 3 of its 4 score components use real data (`score_completeness` ≥ 3). The 7 airports with only 1 or 2 real components are not ranked. The agent reports them as "insufficient data to score" and shows the metrics that are available.
 
-## D19. Weights: 35 / 25 / 25 / 15, with sensitivity check
+### D19. Weights: 35 / 25 / 25 / 15, with sensitivity check
 **Decision:** Growth 35%, seat demand 25%, system congestion 25%, scale 15%. Weights are a configurable parameter.
 
 **Why:**
@@ -280,7 +280,7 @@ Hub size thresholds are statutory (49 USC 47102), as published by the FAA. Hub c
 **Weight-sensitivity flag:** Each ranked airport stores its rank range across the 8 scenarios (`rank_range_sensitivity`). An airport is flagged `weight_sensitive` when its range exceeds 20% of its hub group (`SENSITIVE_RANGE_SHARE = 0.20`), i.e., more than one quintile, meaning it could move to a different tier of its peer group. A fixed threshold (e.g., 10 places) was rejected because hub groups differ in size (30 to 251 airports): it flagged 87% of Nonhubs and no Large hubs. With the relative rule, about 11% of airports are flagged, across all hub groups (e.g., HVN: 23rd–42nd of 79). The agent mentions the flag when reporting a flagged airport.
 A flag does not always indicate an extreme profile: an airport in a crowded middle of its group (e.g., Omaha) can also move many places with small score changes.
 
-## D20. Regional answers are grouped by hub size
+### D20. Regional answers are grouped by hub size
 **Decision:** When a question covers airports of different sizes (e.g., "New England"), the agent groups results by hub size and reports each airport's national rank within its group (e.g., "Boston: 9th of 30 large hubs").
 
 **Why:** Scores are percentiles within hub groups (D3, D17), so they are not comparable across groups. Sorting a mixed region by score would place a strong small airport above a good large one. For example, Bangor Bangor (6th of 251 ranked Nonhubs, score 0.85) would appear ahead of Boston (9th of 30 Large hubs, score 0.66), and Martha's Vineyard (68th of 251 ranked Nonhubs) ahead of Portland, ME (25th of 79 Small hubs). That ordering is meaningless for an investor.
@@ -289,7 +289,7 @@ A flag does not always indicate an extreme profile: an airport in a crowded midd
 
 **Also applies to summaries:** Takeaways and conclusions describe each airport within its own hub group. The agent never calls one airport the strongest or best "in the region" or "overall" when the region spans several hub groups. Found when an early answer followed D20 in its tables but named a single regional winner in its takeaways.
 
-## D21. Validation against simple rankings
+### D21. Validation against simple rankings
 **Question:** Does the four-component score add anything over simply ranking by size or by growth?
 
 **Method:** Within each hub group, our ranking was compared with two simple rankings: by 2025 enplanements (size only) and by 2019→2025 CAGR (growth only).
@@ -319,7 +319,7 @@ A flag does not always indicate an extreme profile: an airport in a crowded midd
 
 **Production options:** cache tool results by input (the data changes rarely), use prompt caching for the fixed system prompt and tool definitions, store conversations server-side (e.g., Redis) and trim or summarize long histories.
 
-## D22. Live public API: OpenSky Network for recent activity
+### D22. Live public API: OpenSky Network for recent activity
 **Decision:** The agent has one live tool, `get_recent_traffic`, which calls the OpenSky Network REST API for an airport's arrivals and departures over the last N full days (default 7). It compares recent airline departures per day with the 2025 baseline from T-100 (all departures / 365).
 
 **Why:** Historical sources (FAA, BTS) describe 2025. OpenSky shows current activity, so the agent can say whether the 2025 picture still holds, and answer "recent activity" questions.
@@ -342,8 +342,9 @@ A flag does not always indicate an extreme profile: an airport in a crowded midd
 **How found:** The first version ("one or two sentences, say what you can help with") produced a sentence followed by a bullet list of capabilities (~75 words) in 2 of 5 eval runs. After the rule was made explicit, 3 of 3 runs gave two sentences (29–34 words).
 
 **Why:** An off-topic request should cost almost nothing and should not reopen earlier answers. Tool calls or a recap of the previous analysis add tokens and latency, and can look like the agent is making things up.
+- Longer refusals drift: in an early test, the agent declined a poem and then revisited an earlier answer unprompted.
 
-## D26. Thin Streamlit UI, independent of the agent
+### D26. Thin Streamlit UI, independent of the agent
 **Decision:** The chat interface is a thin Streamlit app (ui/streamlit_app.py) that sends the full conversation history to run_agent and displays the answer. It contains no agent logic.
 
 **Features:**
@@ -355,7 +356,7 @@ A flag does not always indicate an extreme profile: an airport in a crowded midd
 - Streamlit gives a working chat quickly, which kept the focus on data, scoring, evaluation and guardrails.
 - Because the agent is UI-independent (D24), a FastAPI endpoint and a React client could replace Streamlit without changing the agent.
 
-## D27. Evaluation: deterministic checks, no LLM judge
+### D27. Evaluation: deterministic checks, no LLM judge
 **Decision:** An evaluation suite (server/evals/) runs 13 cases through the agent: the four assignment questions and the Bradley follow-up, plus cases for airport resolution, live data, the decisions above (D20, D22, D25, flags) and guardrails (off-topic, prompt injection, financial advice, unknown airport). Each case checks the tools called and the answer text with string and regex checks. A grounding check runs on every answer: each number must appear in that conversation's tool inputs or results. Years, ranks, numbers from the question and methodology constants from the system prompt are exempt. Results are saved to docs/eval-results.md.
 
 **Why:**
@@ -364,11 +365,14 @@ A flag does not always indicate an extreme profile: an airport in a crowded midd
 
 **Results:** The suite was run four times, fixing bugs in the checks between runs: 10/13, 10/13, 10/13, then 13/13, with every number in the final run grounded in tool results. Every failure was read to decide whether the agent or the check was wrong: 4 were real agent errors (an invented threshold, an off-topic refusal that was too long, and the same rounding error twice), and 5 were bugs in the checks, which were fixed.
 
+**Final run:** After adding 6 cases for known risks (a requested cross-group comparison, an ambiguous city, a forecast question, an unranked airport, a non-predefined region, and a custom long-haul threshold), the suite passed 19/19, with every answer grounded. The runtime guardrail (D28) corrected numbers in 2 of the 19 answers. Reaching 19/19 took four runs; all 6 failures along the way were bugs in the checks, not agent errors.
+
 **Limitations:**
 - Phrase checks can miss a correct answer worded differently, or pass a wrong one, so every failure is read before the agent is changed.
 - Agent answers vary between runs, so one run is a sample, not a guarantee. The earlier runs caught real errors: a rounded number ("about 599" for 599.4), an invented threshold ("at least 75% of its hub group"), and an off-topic refusal longer than D25 allows.
+- Many checks look for specific words, so a correct answer worded differently can fail. In the last round, this caused 6 false failures and no missed errors. Each failure is therefore read before changing the agent.
 
-## D28. Runtime grounding guardrail with one correction retry
+### D28. Runtime grounding guardrail with one correction retry
 **Decision:** After the model's final answer, run_agent runs the same grounding check as the evals (server/app/agent/grounding.py) against the tool calls of the current turn. If any number is ungrounded, the model receives one correction message listing those numbers and asking it to use only tool values; the corrected answer is returned. At most one retry. The result (`verified`, `ungrounded`, `retried`, `ungrounded_before_retry`) is returned with the answer and shown in the Streamlit "Tools used" panel.
 
 **Why:**
@@ -380,6 +384,27 @@ A flag does not always indicate an extreme profile: an airport in a crowded midd
 - A retry adds one model call (a few seconds) to an affected answer.
 - If the corrected answer is still ungrounded, it is returned anyway and the panel shows which numbers could not be verified, so the user sees the problem instead of a silently changed answer.
 - The check inherits the eval check's limits: it confirms that a number appears in the tool output, not that it is attached to the right airport or metric.
+
+**Observed in evaluation:** In the final 19-case run, the guardrail corrected 2 answers: a rounded value ("599" for 599.4), and a number repeated from the previous answer without being fetched again ("+14.1%"). An earlier run caught a mis-copied digit ("437,109" for Bangor's 437,108 passengers), an error a reader would be unlikely to notice.
+
+## Guardrails
+
+| Guardrail | Where it's enforced | How it's tested |
+|---|---|---|
+| Every number comes from a tool; display values copied exactly | Tools (display values) + system prompt | Grounding check on every eval answer |
+| Runtime grounding check with one correction retry (D28) | Agent loop (code) | Offline tests; eval "Guardrail" column |
+| No unsupported guesses or causal claims | System prompt | SFO case ("not measured directly"); forecast case |
+| Input validation: unknown airports, invalid thresholds | Tools (code) | Unknown airport case |
+| Ambiguous names: list candidates, state assumptions | Tools + system prompt | LA, Anchorage and Chicago cases |
+| Tool budget: max 6 calls per turn (D24) | Agent loop (code) | Design feature |
+| Scope: off-topic requests declined briefly, no tools (D25) | System prompt | Off-topic case |
+| Prompt injection resisted | System prompt; scores computed only in code | Injection case |
+| Not financial advice | System prompt | Financial advice case |
+| No cross-group comparisons (D20) | Tools (grouped output) + system prompt | New England and Bangor-vs-Boston cases |
+| Uncertainty flags: missing data, weight sensitivity, low confidence, unranked | Tools + system prompt | HVN and unranked-airport cases |
+| Live data kept out of the score (D22) | Tools + system prompt | "Does that change its ranking?" case |
+
+**Code guardrails vs. prompt guardrails.** The guardrails are enforced at two levels. Rules in the system prompt (scope, no financial advice, stating assumptions) guide the model, but a language model does not follow instructions with certainty: in evaluation runs, the agent occasionally rounded a number or wrote a longer refusal than instructed, even though the prompt forbade it. Guardrails enforced in code (input validation in the tools, the tool budget in the agent loop, and the runtime grounding check) apply on every answer, regardless of how the model behaves. Where a rule matters most, such as every number coming from the data, it is therefore enforced in code, with the prompt rule as a first line of defense rather than the only one.
 
 ## References
 - [FAA – Airport Categories](https://www.faa.gov/airports/planning_capacity/categories)
