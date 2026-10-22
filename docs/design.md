@@ -228,6 +228,7 @@ The guiding rule: **code computes, the language model explains.**
 - **Consistency:** run the eval suite several times and report the pass rate per case.
 - **Passenger satisfaction:** if a broadly licensed source exists, combine it with the score: high demand pressure plus poor terminal satisfaction suggests the largest renovation upside.
 - **Voice:** add voice input and output, e.g., browser speech-to-text for questions and text-to-speech for answers. The agent is UI-independent (D26), so this would only change the interface layer.
+- **Labels on every value:** return each number with its exact definition in the tool output (e.g., "departures, scheduled + charter"), so the model can't attach a correct number to the wrong label, a case the grounding check cannot detect (see the YNG example in D28).
 
 ---
 
