@@ -73,6 +73,8 @@ The agent is a proof of concept: analysts ask questions in plain English, and ge
 
 ### Investment thesis and components (D16)
 
+**The scoring is fully deterministic:** it is computed in code (server/app/core/scoring.py) from the data, with no language model involved. The same data always produces the same scores and ranks, which is verified by the test suite and reproduced exactly by build_data.py.
+
 | Component | Weight | Metric | What it captures |
 |---|---|---|---|
 | **Growth** | 35% | 70% passenger CAGR 2019→2025 + 30% change 2024→2025 | Is demand rising? (long-term trend + recent momentum) |
