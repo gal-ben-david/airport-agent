@@ -21,6 +21,28 @@ from app.agent.questions import ASSIGNMENT_QUESTIONS  # noqa: E402
 
 st.set_page_config(page_title="Airport Investment Agent", page_icon="✈️")
 
+# Look and feel: the theme is in .streamlit/config.toml; these few rules cover what
+# the theme can't set (soft cards instead of borders, left-aligned example questions).
+st.markdown(
+    """
+    <style>
+    .st-key-examples button {
+        background: #F5F5F7; border: none; justify-content: flex-start;
+        text-align: left; padding: 0.85rem 1.1rem; color: #1D1D1F;
+    }
+    .st-key-examples button > div { justify-content: flex-start; }
+    .st-key-examples button:hover { background: #EBEBF0; color: #1D1D1F; }
+    [data-testid="stExpander"] details { border: none; background: #F5F5F7; }
+    [data-testid="stExpander"] summary { color: #6E6E73; font-size: 0.875rem; }
+    .react-json-view { background: transparent !important; }
+    [data-testid="stChatMessageAvatarCustom"] { background: #F5F5F7; color: #6E6E73; }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+AVATARS = {"user": ":material/person:", "assistant": ":material/flight:"}
+
 # Each message: {"role", "content", "tool_calls": [...], "grounding": {...}, "error": bool}
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -30,7 +52,10 @@ if "messages" not in st.session_state:
 # ---------------------------------------------------------------------------
 
 with st.sidebar:
-    st.header("Airport Investment Agent")
+    if st.button("New conversation", icon=":material/edit_square:", width="stretch"):
+        st.session_state.messages = []
+        st.rerun()
+    st.subheader("About")
     st.write(
         "Ask about US airports as terminal expansion candidates. The agent scores "
         "FAA Primary airports on passenger growth, seat demand and congestion within "
@@ -44,9 +69,6 @@ with st.sidebar:
         "- BTS airline delay causes, 2025"
     )
     st.caption("Analysis, not financial advice.")
-    if st.button("New conversation", width="stretch"):
-        st.session_state.messages = []
-        st.rerun()
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -56,11 +78,11 @@ with st.sidebar:
 def show_grounding(grounding: dict) -> None:
     """One line: were all numbers in the answer found in the tool results (D28)?"""
     if grounding["verified"]:
-        line = "Grounding: all numbers verified"
+        line = ":material/check_circle: Grounding: all numbers verified"
         if grounding["retried"]:
             line += (" (after one correction; first draft had "
                      f"{', '.join(grounding['ungrounded_before_retry'])})")
-        st.success(line)
+        st.caption(line)
     else:
         st.warning("Grounding: numbers not found in the tool results: "
                    f"{', '.join(grounding['ungrounded'])}")
@@ -80,7 +102,7 @@ def show_tool_calls(tool_calls: list[dict], grounding: dict | None) -> None:
                 status = "error"
             else:
                 status = "ok"
-            st.markdown(f"**{i}. `{call['name']}`** — {status}")
+            st.markdown(f"**{i}. {call['name']}** · {status}")
             st.caption("Inputs")
             st.json(call["input"])
             st.caption("Result")
@@ -109,10 +131,12 @@ def history_for_agent() -> list[dict]:
 # Chat
 # ---------------------------------------------------------------------------
 
-st.title("✈️ Airport Investment Agent")
+st.title("Airport Investment Agent")
+st.caption("Find US airports where terminal expansion looks most promising, "
+           "based on passenger and flight growth.")
 
 for m in st.session_state.messages:
-    with st.chat_message(m["role"]):
+    with st.chat_message(m["role"], avatar=AVATARS[m["role"]]):
         if m.get("error"):
             st.error(m["content"])
         else:
@@ -124,18 +148,20 @@ prompt = st.chat_input("Ask about US airports...") or st.session_state.pop("pend
 
 # Example questions before the first message; a click sends that question.
 if not st.session_state.messages and not prompt:
-    st.write("Try one of the assignment questions:")
-    for q in ASSIGNMENT_QUESTIONS:
-        if st.button(q["text"], key=q["id"], width="stretch"):
-            st.session_state.pending_prompt = q["text"]
-            st.rerun()
+    st.write("")
+    with st.container(key="examples"):
+        st.caption("Try an example")
+        for q in ASSIGNMENT_QUESTIONS:
+            if st.button(q["text"], key=q["id"], width="stretch"):
+                st.session_state.pending_prompt = q["text"]
+                st.rerun()
 
 if prompt:
     st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
+    with st.chat_message("user", avatar=AVATARS["user"]):
         st.markdown(prompt)
 
-    with st.chat_message("assistant"):
+    with st.chat_message("assistant", avatar=AVATARS["assistant"]):
         try:
             with st.spinner("Analyzing..."):
                 result = run_agent(history_for_agent())

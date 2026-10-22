@@ -1,0 +1,26 @@
+# Streamlit theme for ui/streamlit_app.py (read from the repo root, where the app is run).
+# Calm and minimal: system fonts, white and system grays, one blue accent.
+
+[client]
+toolbarMode = "minimal"   # hide the Deploy button and developer menu items
+
+[theme]
+base = "light"
+primaryColor = "#0071E3"              # the one accent: buttons, focus, links
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F5F5F7"  # sidebar, cards, input
+textColor = "#1D1D1F"
+linkColor = "#0071E3"
+linkUnderline = false
+
+font = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif"
+headingFont = "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif"
+codeFont = "'SF Mono', ui-monospace, Menlo, monospace"
+codeBackgroundColor = "#F5F5F7"
+headingFontSizes = ["2.5rem", "1.375rem", "1.125rem", "1rem", "1rem", "1rem"]
+headingFontWeights = [600, 600, 600, 600, 600, 600]
+
+baseRadius = "12px"
+borderColor = "#E5E5EA"
+showWidgetBorder = false
+showSidebarBorder = false
